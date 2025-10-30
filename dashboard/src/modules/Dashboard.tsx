@@ -84,7 +84,7 @@ export function Dashboard() {
 
 function Card(props: { children: preact.ComponentChildren; class?: string }) {
     return (
-        <div class={`bg-white rounded-2xl shadow-md p-6 ${props.class ?? ''}`}>{props.children}</div>
+        <div class={`bg-card rounded-2xl shadow-md p-6 border border-border ${props.class ?? ''}`}>{props.children}</div>
     );
 }
 
@@ -95,7 +95,7 @@ function DistanceCard(props: {
 }) {
     return (
         <Card>
-            <div class="uppercase text-xs tracking-wide text-slate-500 text-center">Current Distance</div>
+            <div class="uppercase text-xs tracking-wide text-muted-foreground text-center">Current Distance</div>
             <div class="text-5xl font-bold text-center my-4">
                 {props.value == null ? '--' : props.value.toFixed(1)} {props.unit}
             </div>
@@ -103,7 +103,7 @@ function DistanceCard(props: {
                 <label class="text-sm" for="unitSelect">Units</label>
                 <select
                     id="unitSelect"
-                    class="border border-slate-200 rounded-xl px-3 py-2"
+                    class="border border-border bg-background text-foreground rounded-xl px-3 py-2"
                     value={props.unit}
                     onInput={(e: any) => props.onUnitChange((e.currentTarget.value as 'cm' | 'in'))}
                 >
@@ -125,13 +125,13 @@ function AlarmSettings(props: {
 }) {
     return (
         <Card>
-            <div class="uppercase text-xs tracking-wide text-slate-500 text-center">Alarm Settings</div>
+            <div class="uppercase text-xs tracking-wide text-muted-foreground text-center">Alarm Settings</div>
             <div class="flex flex-col gap-3 mt-4">
                 <div class="flex flex-col gap-2">
                     <label class="text-sm" for="alarmType">Alarm Type</label>
                     <select
                         id="alarmType"
-                        class="border border-slate-200 rounded-xl px-3 py-2"
+                        class="border border-border bg-background text-foreground rounded-xl px-3 py-2"
                         value={props.alarmType}
                         onInput={(e: any) => props.onAlarmTypeChange(e.currentTarget.value as AlarmType)}
                     >
@@ -144,7 +144,7 @@ function AlarmSettings(props: {
                     <input
                         id="alarmValue"
                         type="number"
-                        class="border border-slate-200 rounded-xl px-3 py-2"
+                        class="border border-border bg-background text-foreground rounded-xl px-3 py-2"
                         placeholder={`Enter distance in ${props.unit}`}
                         value={props.alarmValue}
                         onInput={(e: any) => {
@@ -154,7 +154,7 @@ function AlarmSettings(props: {
                     />
                 </div>
                 <button
-                    class={`rounded-xl px-3 py-2 text-white transition-colors ${props.triggered ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-600 hover:bg-blue-700'}`}
+                    class={`rounded-xl px-3 py-2 transition-colors text-primary-foreground ${props.triggered ? 'bg-destructive hover:opacity-90' : 'bg-primary hover:opacity-90'}`}
                     onClick={() => {
                         if (props.alarmValue === '') return;
                         const txt = `Alarm set: ${props.alarmType} than ${props.alarmValue} ${props.unit}`;
@@ -164,7 +164,7 @@ function AlarmSettings(props: {
                     Set Alarm
                 </button>
                 {props.triggered && (
-                    <div class="bg-red-500 text-white rounded-xl px-3 py-3 text-center animate-[fadeIn_0.3s_ease-in-out]">
+                    <div class="bg-destructive text-destructive-foreground rounded-xl px-3 py-3 text-center animate-[fadeIn_0.3s_ease-in-out]">
                         ⚠️ Distance threshold triggered!
                     </div>
                 )}
@@ -207,7 +207,7 @@ function ChartCard(props: { unit: 'cm' | 'in'; points: DataPoint[] }) {
         <Card class="md:col-span-2">
             <div class="w-full">
                 <div ref={containerRef} class="ct-chart"></div>
-                <div class="text-right text-xs text-slate-500 mt-2">Distance ({props.unit})</div>
+                <div class="text-right text-xs text-muted-foreground mt-2">Distance ({props.unit})</div>
             </div>
         </Card>
     );

@@ -8,20 +8,8 @@ type DataPoint = {
     valueCm: number;
 };
 
-function useInterval(callback: () => void, delayMs: number) {
-    const savedCallback = useRef(callback);
-    useEffect(() => {
-        savedCallback.current = callback;
-    }, [callback]);
-    useEffect(() => {
-        const id = setInterval(() => savedCallback.current(), delayMs);
-        return () => clearInterval(id);
-    }, [delayMs]);
-}
-
-function generateFakeDistanceCm(): number {
-    return 20 + Math.random() * 80;
-}
+const SAMPLE_RATE_HZ = 10;
+const BUFFER_SIZE = 100;
 
 function formatNow(): string {
     return new Date().toLocaleTimeString();
@@ -36,6 +24,52 @@ export function Dashboard() {
     const [alarmType, setAlarmType] = useState<AlarmType>('greater');
     const [alarmValue, setAlarmValue] = useState<number | ''>('');
     const [points, setPoints] = useState<DataPoint[]>([]);
+
+    // Build a 100-sample buffer of DataPoint from raw cm values (last value most recent)
+    function buildPointsFromArray(valuesCm: number[]): DataPoint[] {
+        const intervalMs = Math.round(1000 / SAMPLE_RATE_HZ);
+        const now = Date.now();
+        const len = valuesCm.length;
+        const pts: DataPoint[] = new Array(len);
+        for (let i = 0; i < len; i++) {
+            const t = now - (len - 1 - i) * intervalMs;
+            pts[i] = { timeLabel: new Date(t).toLocaleTimeString(), valueCm: valuesCm[i] };
+        }
+        return pts;
+    }
+
+    // Connect to WebSocket /ws and handle incoming data
+    useEffect(() => {
+        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+        const url = `${protocol}://${location.host}/ws`;
+        const socket = new WebSocket(url);
+
+        socket.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg?.event === 'data' && Array.isArray(msg.data)) {
+                    // Replace entire buffer
+                    const values = (msg.data as number[]).slice(-BUFFER_SIZE);
+                    setPoints(buildPointsFromArray(values));
+                } else if (msg?.event === 'update' && typeof msg.data === 'number') {
+                    // Append new sample and trim to 100
+                    setPoints(prev => {
+                        const nextPoint: DataPoint = { timeLabel: formatNow(), valueCm: msg.data as number };
+                        if (prev.length === 0) return [nextPoint];
+                        const updated = [...prev, nextPoint];
+                        if (updated.length > BUFFER_SIZE) updated.shift();
+                        return updated;
+                    });
+                }
+            } catch {
+                // ignore malformed messages
+            }
+        };
+
+        return () => {
+            try { socket.close(); } catch {}
+        };
+    }, []);
 
     const latestDisplayValue = useMemo(() => {
         const last = points[points.length - 1]?.valueCm ?? null;
@@ -53,14 +87,7 @@ export function Dashboard() {
         return last < threshold;
     }, [alarmValue, alarmType, points, unit]);
 
-    useInterval(() => {
-        setPoints(prev => {
-            const next: DataPoint = { timeLabel: formatNow(), valueCm: generateFakeDistanceCm() };
-            const updated = [...prev, next];
-            if (updated.length > 20) updated.shift();
-            return updated;
-        });
-    }, 1000);
+    // points are now driven by websocket messages
 
     return (
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
@@ -177,17 +204,27 @@ function ChartCard(props: { unit: 'cm' | 'in'; points: DataPoint[] }) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const chartRef = useRef<LineChart | null>(null);
 
-    const labels = props.points.map(p => p.timeLabel);
+    // Compute relative time labels in seconds: rightmost is 0, leftwards are negative
+    const labels = props.points.map((_, i, arr) => (i - (arr.length - 1)) / SAMPLE_RATE_HZ);
     const values = props.points.map(p => (props.unit === 'in' ? cmToInches(p.valueCm) : p.valueCm));
 
     useEffect(() => {
         if (!containerRef.current) return;
         const options: LineChartOptions = {
             height: 250,
-            showPoint: true,
+            showPoint: false,
             lineSmooth: true,
-            axisX: { showLabel: false, showGrid: false },
-            axisY: { onlyInteger: false },
+            axisX: {
+                showLabel: true,
+                showGrid: false,
+                labelInterpolationFnc: (value: number, index: number) => {
+                    // Show a label every second and at the last point (0s)
+                    if (index === labels.length - 1) return '0s';
+                    if (index % SAMPLE_RATE_HZ === 0) return `${Math.round(value)}s`;
+                    return null;
+                },
+            },
+            axisY: { onlyInteger: false, low: 0 },
             chartPadding: { top: 10, right: 10, bottom: 10, left: 10 },
         };
         if (!chartRef.current) {
@@ -206,8 +243,9 @@ function ChartCard(props: { unit: 'cm' | 'in'; points: DataPoint[] }) {
     return (
         <Card class="md:col-span-2">
             <div class="w-full">
+                <div class="uppercase text-xs tracking-wide text-muted-foreground text-center">Distance ({props.unit})</div>
                 <div ref={containerRef} class="ct-chart"></div>
-                <div class="text-right text-xs text-muted-foreground mt-2">Distance ({props.unit})</div>
+                {/* <div class="text-right text-xs text-muted-foreground mt-4">Distance ({props.unit})</div> */}
             </div>
         </Card>
     );

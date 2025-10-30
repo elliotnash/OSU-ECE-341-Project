@@ -69,6 +69,12 @@ body {
 	color: hsl(var(--foreground));
 }
 
+.ct-chart {
+  margin-left: -16px;
+  margin-bottom: -32px;
+  margin-top: 12px;
+}
+
 .ct-chart .ct-label {
 	color: hsl(var(--muted-foreground));
 	fill: hsl(var(--muted-foreground));

@@ -69,10 +69,6 @@ body {
 	color: hsl(var(--foreground));
 }
 
-/* Chartist theming via our tokens */
-.ct-chart {
-	/* inherit card/background by default */
-}
 .ct-chart .ct-label {
 	color: hsl(var(--muted-foreground));
 	fill: hsl(var(--muted-foreground));

@@ -1,8 +1,16 @@
-#include "Arduino.h"
+#include <Arduino.h>
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <mutex>
+
+#include "display.hpp"
+
+#define I2C_SDA 22
+#define I2C_SCL 23
+#define REFRESH_INTERVAL 100
+
+Display display(I2C_SDA, I2C_SCL, REFRESH_INTERVAL);
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -142,6 +150,8 @@ void processDistance() {
       bufferIndex = 0;
     }
   }
+  display.setValue(distance/100.0);
+  display.update();
   ws.textAll("{\"event\":\"update\",\"data\":" + String(distance) + "}");
 }
 
@@ -160,6 +170,8 @@ void setup() {
   setupWiFi();
   // Start web server
   setupWebServer();
+
+  display.init();
 }
 
 /**

@@ -5,7 +5,7 @@
 #show: project.with(
   title: "Project Title",
   authors: (
-    "Elliot Nash 934-543-739",
+    "Elliot Nash",
   ),
   team-number: "TEAM_NUMBER"
 )

@@ -1,12 +1,12 @@
 #import "template.typ": *
 
+#import "authors.typ": authors
+
 // Take a look at the file `template.typ` in the file panel
 // to customize this template and discover how it works.
 #show: project.with(
   title: "Project Title",
-  authors: (
-    "Elliot Nash",
-  ),
+  authors: authors,
   team-number: "TEAM_NUMBER"
 )
 

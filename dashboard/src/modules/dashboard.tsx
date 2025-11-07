@@ -189,7 +189,7 @@ function AlarmSettings(props: {
                   alert(txt);
                 }}>Set Alarm</Button>
                 {props.triggered && (
-                    <div class="bg-destructive text-destructive-foreground rounded-xl px-3 py-3 text-center animate-[fadeIn_0.3s_ease-in-out]">
+                    <div class="bg-destructive text-destructive-foreground rounded px-3 py-3 text-center animate-[fadeIn_0.3s_ease-in-out]">
                         ⚠️ Distance threshold triggered!
                     </div>
                 )}
@@ -246,9 +246,7 @@ function ChartCard(props: { unit: 'cm' | 'in'; points: DataPoint[] }) {
           </CardHeader>
           <CardContent>
             <div class="w-full">
-                {/* <div class="uppercase text-xs tracking-wide text-muted-foreground text-center">Distance ({props.unit})</div> */}
                 <div ref={containerRef} class="ct-chart"></div>
-                {/* <div class="text-right text-xs text-muted-foreground mt-4">Distance ({props.unit})</div> */}
             </div>
           </CardContent>
         </Card>

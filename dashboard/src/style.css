@@ -197,35 +197,28 @@
 	}
 }
 
-/* Base app surface uses our tokens so plain elements inherit */
-html, body, #app {
-	height: 100%;
-}
-body {
-	background-color: hsl(var(--background));
-	color: hsl(var(--foreground));
-}
-/*
+/* Chartist styling */
 .ct-chart {
   margin-left: -16px;
-  margin-bottom: -32px;
+  margin-right: -4px;
+  margin-bottom: -22px;
   margin-top: 12px;
 }
 
 .ct-chart .ct-label {
-	color: hsl(var(--muted-foreground));
-	fill: hsl(var(--muted-foreground));
+	color: var(--muted-foreground);
+	fill: var(--muted-foreground);
 	font-size: 12px;
 }
 .ct-chart .ct-grid {
-	stroke: hsl(var(--border));
+	stroke: var(--border);
 	stroke-dasharray: 2px;
 }
 .ct-chart .ct-series-a .ct-line,
 .ct-chart .ct-series-a .ct-point {
-	stroke: hsl(var(--primary));
+	stroke: var(--chart-1);
 }
 .ct-chart .ct-series-a .ct-area {
-	fill: hsl(var(--primary));
+	fill: var(--chart-1);
 	fill-opacity: 0.15;
-} */
+}

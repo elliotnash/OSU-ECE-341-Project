@@ -6,6 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { NumberInput } from '@/components/ui/number-input';
 
+const HOST = import.meta.env.DEV ? 'localhost:3000' : location.host;
+const WS_URL = `ws://${HOST}/ws`;
+
 type AlarmType = 'greater' | 'less';
 
 type DataPoint = {
@@ -45,8 +48,7 @@ export function Dashboard() {
 
     // Connect to WebSocket /ws and handle incoming data
     useEffect(() => {
-        const url = `ws://${location.host}/ws`;
-        const socket = new WebSocket(url);
+        const socket = new WebSocket(WS_URL);
 
         socket.onmessage = (event) => {
             try {
@@ -129,21 +131,23 @@ function DistanceCard(props: {
           <CardHeader>
             <CardTitle>Current Distance</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div class="text-5xl font-bold text-center my-4">
-                {props.value == null ? '--' : props.value.toFixed(1)} {props.unit}
-            </div>
-            <div class="flex flex-col gap-2">
-              <Label htmlFor="unitSelect">Units</Label>
-              <Select value={props.unit} onValueChange={props.onUnitChange}>
-                <SelectTrigger id="unitSelect" className="w-full">
-                  <SelectValue placeholder="Select a unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cm">Centimeters</SelectItem>
-                  <SelectItem value="in">Inches</SelectItem>
-                </SelectContent>
-              </Select>
+          <CardContent className="h-full">
+            <div className="flex flex-col justify-between h-full pt-4">
+              <div class="text-5xl font-bold text-center my-4">
+                  {props.value == null ? '--' : props.value.toFixed(1)} {props.unit}
+              </div>
+              <div class="flex flex-col gap-2">
+                <Label htmlFor="unitSelect">Units</Label>
+                <Select value={props.unit} onValueChange={props.onUnitChange}>
+                  <SelectTrigger id="unitSelect" className="w-full">
+                    <SelectValue placeholder="Select a unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cm">Centimeters</SelectItem>
+                    <SelectItem value="in">Inches</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>

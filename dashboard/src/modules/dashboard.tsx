@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { LineChart, type LineChartOptions } from 'chartist';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { NumberInput } from '@/components/ui/number-input';
 
 type AlarmType = 'greater' | 'less';
 
@@ -22,7 +27,7 @@ function cmToInches(valueCm: number): number {
 export function Dashboard() {
     const [unit, setUnit] = useState<'cm' | 'in'>('cm');
     const [alarmType, setAlarmType] = useState<AlarmType>('greater');
-    const [alarmValue, setAlarmValue] = useState<number | ''>('');
+    const [alarmValue, setAlarmValue] = useState<number | null>(null);
     const [points, setPoints] = useState<DataPoint[]>([]);
 
     // Build a 100-sample buffer of DataPoint from raw cm values (last value most recent)
@@ -78,7 +83,7 @@ export function Dashboard() {
     }, [points, unit]);
 
     const thresholdTriggered = useMemo(() => {
-        if (alarmValue === '' || points.length === 0) return false;
+        if (alarmValue === null || points.length === 0) return false;
         const lastCm = points[points.length - 1].valueCm;
         const lastIn = cmToInches(lastCm);
         const last = unit === 'in' ? lastIn : lastCm;
@@ -109,11 +114,11 @@ export function Dashboard() {
     );
 }
 
-function Card(props: { children: preact.ComponentChildren; class?: string }) {
-    return (
-        <div class={`bg-card rounded-2xl shadow-md p-6 border border-border ${props.class ?? ''}`}>{props.children}</div>
-    );
-}
+// function Card(props: { children: preact.ComponentChildren; class?: string }) {
+//     return (
+//         <div class={`bg-card rounded-2xl shadow-md p-6 border border-border ${props.class ?? ''}`}>{props.children}</div>
+//     );
+// }
 
 function DistanceCard(props: {
     unit: 'cm' | 'in';
@@ -122,22 +127,26 @@ function DistanceCard(props: {
 }) {
     return (
         <Card>
-            <div class="uppercase text-xs tracking-wide text-muted-foreground text-center">Current Distance</div>
+          <CardHeader>
+            <CardTitle>Current Distance</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div class="text-5xl font-bold text-center my-4">
                 {props.value == null ? '--' : props.value.toFixed(1)} {props.unit}
             </div>
             <div class="flex flex-col gap-2">
-                <label class="text-sm" for="unitSelect">Units</label>
-                <select
-                    id="unitSelect"
-                    class="border border-border bg-background text-foreground rounded-xl px-3 py-2"
-                    value={props.unit}
-                    onInput={(e: any) => props.onUnitChange((e.currentTarget.value as 'cm' | 'in'))}
-                >
-                    <option value="cm">Centimeters</option>
-                    <option value="in">Inches</option>
-                </select>
+              <Label htmlFor="unitSelect">Units</Label>
+              <Select value={props.unit} onValueChange={props.onUnitChange}>
+                <SelectTrigger id="unitSelect" className="w-full">
+                  <SelectValue placeholder="Select a unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cm">Centimeters</SelectItem>
+                  <SelectItem value="in">Inches</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </CardContent>
         </Card>
     );
 }
@@ -145,57 +154,47 @@ function DistanceCard(props: {
 function AlarmSettings(props: {
     unit: 'cm' | 'in';
     alarmType: AlarmType;
-    alarmValue: number | '';
+    alarmValue: number | null;
     onAlarmTypeChange: (t: AlarmType) => void;
-    onAlarmValueChange: (v: number | '') => void;
+    onAlarmValueChange: (v: number | null) => void;
     triggered: boolean;
 }) {
     return (
         <Card>
-            <div class="uppercase text-xs tracking-wide text-muted-foreground text-center">Alarm Settings</div>
+          <CardHeader>
+            <CardTitle>Alarm Settings</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* <div class="uppercase text-xs tracking-wide text-muted-foreground text-center">Alarm Settings</div> */}
             <div class="flex flex-col gap-3 mt-4">
                 <div class="flex flex-col gap-2">
-                    <label class="text-sm" for="alarmType">Alarm Type</label>
-                    <select
-                        id="alarmType"
-                        class="border border-border bg-background text-foreground rounded-xl px-3 py-2"
-                        value={props.alarmType}
-                        onInput={(e: any) => props.onAlarmTypeChange(e.currentTarget.value as AlarmType)}
-                    >
-                        <option value="greater">Greater than</option>
-                        <option value="less">Less than</option>
-                    </select>
+                  <Label htmlFor="alarmType">Alarm Type</Label>
+                  <Select value={props.alarmType} onValueChange={props.onAlarmTypeChange}>
+                    <SelectTrigger id="alarmType" className="w-full">
+                      <SelectValue placeholder="Select a type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="greater">Greater than</SelectItem>
+                      <SelectItem value="less">Less than</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div class="flex flex-col gap-2">
-                    <label class="text-sm" for="alarmValue">Threshold Distance</label>
-                    <input
-                        id="alarmValue"
-                        type="number"
-                        class="border border-border bg-background text-foreground rounded-xl px-3 py-2"
-                        placeholder={`Enter distance in ${props.unit}`}
-                        value={props.alarmValue}
-                        onInput={(e: any) => {
-                            const v = e.currentTarget.value;
-                            props.onAlarmValueChange(v === '' ? '' : Number(v));
-                        }}
-                    />
+                    <Label htmlFor="alarmValue">Threshold Distance</Label>
+                    <NumberInput id="alarmValue" value={props.alarmValue} allowNegative={false} decimalScale={2} onValueChange={props.onAlarmValueChange} />
                 </div>
-                <button
-                    class={`rounded-xl px-3 py-2 transition-colors text-primary-foreground ${props.triggered ? 'bg-destructive hover:opacity-90' : 'bg-primary hover:opacity-90'}`}
-                    onClick={() => {
-                        if (props.alarmValue === '') return;
-                        const txt = `Alarm set: ${props.alarmType} than ${props.alarmValue} ${props.unit}`;
-                        alert(txt);
-                    }}
-                >
-                    Set Alarm
-                </button>
+                <Button onClick={() => {
+                  if (props.alarmValue === null) return;
+                  const txt = `Alarm set: ${props.alarmType} than ${props.alarmValue} ${props.unit}`;
+                  alert(txt);
+                }}>Set Alarm</Button>
                 {props.triggered && (
                     <div class="bg-destructive text-destructive-foreground rounded-xl px-3 py-3 text-center animate-[fadeIn_0.3s_ease-in-out]">
                         ⚠️ Distance threshold triggered!
                     </div>
                 )}
             </div>
+          </CardContent>
         </Card>
     );
 }
@@ -241,12 +240,17 @@ function ChartCard(props: { unit: 'cm' | 'in'; points: DataPoint[] }) {
     }, []);
 
     return (
-        <Card class="md:col-span-2">
+        <Card className="col-span-2">
+          <CardHeader>
+            <CardTitle>Distance ({props.unit})</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div class="w-full">
-                <div class="uppercase text-xs tracking-wide text-muted-foreground text-center">Distance ({props.unit})</div>
+                {/* <div class="uppercase text-xs tracking-wide text-muted-foreground text-center">Distance ({props.unit})</div> */}
                 <div ref={containerRef} class="ct-chart"></div>
                 {/* <div class="text-right text-xs text-muted-foreground mt-4">Distance ({props.unit})</div> */}
             </div>
+          </CardContent>
         </Card>
     );
 }

@@ -1,3 +1,4 @@
+import path from "path"
 import { defineConfig } from 'vite';
 import preact from '@preact/preset-vite';
 import tailwindcss from '@tailwindcss/vite';
@@ -6,7 +7,7 @@ import viteCompression from 'vite-plugin-compression';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    plugins: [
+  plugins: [
 		preact(),
 		tailwindcss(),
 		viteSingleFile(),
@@ -14,4 +15,12 @@ export default defineConfig({
 			algorithm: 'gzip',
 		})
 	],
+  optimizeDeps: {
+    include: ['preact', 'preact/jsx-runtime'], // Explicitly include Preact and its JSX runtime
+  },
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
 });

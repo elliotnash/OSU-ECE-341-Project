@@ -45,8 +45,7 @@ export function Dashboard() {
 
     // Connect to WebSocket /ws and handle incoming data
     useEffect(() => {
-        const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-        const url = `${protocol}://${location.host}/ws`;
+        const url = `ws://${location.host}/ws`;
         const socket = new WebSocket(url);
 
         socket.onmessage = (event) => {
@@ -240,15 +239,15 @@ function ChartCard(props: { unit: 'cm' | 'in'; points: DataPoint[] }) {
     }, []);
 
     return (
-        <Card className="col-span-2">
-          <CardHeader>
-            <CardTitle>Distance ({props.unit})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="w-full">
-                <div ref={containerRef} class="ct-chart"></div>
-            </div>
-          </CardContent>
-        </Card>
+      <Card className="col-span-2">
+        <CardHeader>
+          <CardTitle>Distance ({props.unit})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="w-full">
+              <div ref={containerRef} class="ct-chart"></div>
+          </div>
+        </CardContent>
+      </Card>
     );
 }

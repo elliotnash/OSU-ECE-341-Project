@@ -80,7 +80,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     }, [handleIncrement, handleDecrement, combinedRef]);
 
     useEffect(() => {
-      if (controlledValue !== undefined) {
+      if (controlledValue !== undefined && controlledValue !== value) {
         setValue(controlledValue);
       }
     }, [controlledValue]);

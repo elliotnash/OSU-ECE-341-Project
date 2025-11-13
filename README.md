@@ -27,7 +27,7 @@ DISTANCE_WINDOW_SIZE=100
 SENSOR_REFRESH_INTERVAL=100
 ```
 
-If `WIFI_SSID` and `WIFI_PASSWORD` are not set, the ESP32 will run in Access Point (AP) mode.
+The ESP32 will attempt to connect to the WiFi at `WIFI_SSID` and `WIFI_PASSWORD`. If a connection can't be established after 5 seconds, the ESP32 will run in Access Point (AP) mode.
 
 ### Selecting the Environment
 

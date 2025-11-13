@@ -125,6 +125,10 @@ void Dashboard::init() {
 }
 
 void Dashboard::update() {
+  // Handle DNS queries
+  this->dnsServer.processNextRequest();
+
+  // Cleanup expired WebSocket clients on set interval
   unsigned long now = millis();
   if (now - lastCleanup >= cleanupInterval) {
     this->ws.cleanupClients();

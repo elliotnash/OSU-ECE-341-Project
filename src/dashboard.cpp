@@ -1,3 +1,6 @@
+#include <WiFi.h>
+#include <ESPmDNS.h>
+
 #include "dashboard.hpp"
 
 // These are pointers to the start and end of the compressed index.html file (in flash memory)
@@ -63,7 +66,7 @@ void Dashboard::setupServer() {
   server.addHandler(&ws);
 
   server.begin();
-  Serial.println("Dashboard running at: http://" + esp_ip.toString());
+  Serial.println("Dashboard running at: http://" + espIP.toString());
 }
 
 /**
@@ -85,12 +88,27 @@ void Dashboard::setupWiFi() {
   // If connection fails, run in access point mode
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Connection failed, running in access point mode");
+    this->isAP = true;
     WiFi.disconnect();
     delay(1000);
     WiFi.softAP("ESP32 Distance Sensor", "password");
-    esp_ip = WiFi.softAPIP();
+    espIP = WiFi.softAPIP();
   } else {
-    esp_ip = WiFi.localIP();
+    espIP = WiFi.localIP();
+  }
+  WiFi.waitForConnectResult();
+
+  // Setup MDNS responder to allow .local domain access
+  if (MDNS.begin("sensor")) {
+    MDNS.addService("http", "tcp", 80);
+    Serial.println("MDNS responder started");
+  } else {
+    Serial.println("Error setting up MDNS responder!");
+  }
+
+  if (this->isAP) {
+    this->dnsServer.start(53, "*", espIP);
+    Serial.println("DNS server started");
   }
 
   Serial.println("Connected to WiFi");

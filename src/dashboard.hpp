@@ -1,14 +1,15 @@
 #pragma once
 
-#include <WiFi.h>
-#include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <DNSServer.h>
 
 class Dashboard {
   private:
   AsyncWebServer server;
   AsyncWebSocket ws;
-  IPAddress esp_ip;
+  DNSServer dnsServer;
+  IPAddress espIP;
+  bool isAP = false;
   String getDistanceData();
   u16_t (*distances)[DISTANCE_WINDOW_SIZE];
   SemaphoreHandle_t distancesMutex;

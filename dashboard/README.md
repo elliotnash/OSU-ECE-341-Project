@@ -1,15 +1,31 @@
-# `create-preact`
+# Dashboard
 
-<h2 align="center">
-  <img height="256" width="256" src="./src/assets/preact.svg">
-</h2>
+Web dashboard built with Preact and shadcn components for visualizing distance sensor data. The dashboard displays a graph of distance over time and provides controls for sensor configuration.
 
-<h3 align="center">Get started using Preact and Vite!</h3>
+## Development
 
-## Getting Started
+Install dependencies:
+```bash
+pnpm install
+```
 
--   `pnpm dev` - Starts a dev server at http://localhost:5173/
+Start the development server (automatically starts the mock-server):
+```bash
+pnpm dev
+```
 
--   `pnpm build` - Builds for production, emitting to `dist/`
+The dashboard will be available at http://localhost:5173/
 
--   `pnpm preview` - Starts a server at http://localhost:4173/ to test production build locally
+## Building
+
+Build the dashboard for production:
+```bash
+pnpm build
+```
+
+This creates a single `index.html` file in `dist/` that is compressed with gzip and embedded in the ESP32 firmware during the main project build process.
+
+Preview the production build locally:
+```bash
+pnpm preview
+```

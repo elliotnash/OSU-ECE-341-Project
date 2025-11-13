@@ -5,7 +5,7 @@ import { ThemeProvider } from './components/theme-provider';
 
 export function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+    <ThemeProvider defaultTheme="system" storageKey="theme">
       <div class="min-h-screen bg-background text-foreground p-8">
         <h1 class="text-3xl font-semibold text-center mb-6">ESP32 Distance Sensor Dashboard</h1>
         <Dashboard />

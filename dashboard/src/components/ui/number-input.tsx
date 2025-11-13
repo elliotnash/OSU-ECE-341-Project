@@ -1,158 +1,106 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { forwardRef, useCallback, useEffect, useState, useRef } from 'react';
-import { NumericFormat, NumericFormatProps } from 'react-number-format';
-import { Button } from './button';
-import { Input } from './input';
+import { Minus, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useRepeatablePress } from "@/lib/hooks/repeatable-press";
 
-export interface NumberInputProps
-  extends Omit<NumericFormatProps, 'value' | 'onValueChange'> {
-  stepper?: number;
-  thousandSeparator?: string;
-  placeholder?: string;
-  defaultValue?: number;
-  min?: number;
-  max?: number;
-  value?: number; // Controlled value
-  suffix?: string;
-  prefix?: string;
-  onValueChange?: (value: number | undefined) => void;
-  fixedDecimalScale?: boolean;
-  decimalScale?: number;
-}
+const numberRegex = /^\d+(\.\d*)?$/;
 
-export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
-  (
-    {
-      stepper,
-      thousandSeparator,
-      placeholder,
-      defaultValue,
-      min = -Infinity,
-      max = Infinity,
-      onValueChange,
-      fixedDecimalScale = false,
-      decimalScale = 0,
-      suffix,
-      prefix,
-      value: controlledValue,
-      ...props
-    },
-    ref
-  ) => {
-    const internalRef = useRef<HTMLInputElement>(null); // Create an internal ref
-    const combinedRef = ref || internalRef; // Use provided ref or internal ref
-    const [value, setValue] = useState<number | undefined>(
-      controlledValue ?? defaultValue
-    );
+const NumberInput = ({id, step = 1, maxLen = Number.POSITIVE_INFINITY, value, onValueChange}: {id: string, step?: number, maxLen?: number, value: number | null, onValueChange: (value: number | null) => void}) => {
+  const [internalVal, setInternalVal] = useState('');
+  const isInternalChangeRef = useRef(false);
 
-    const handleIncrement = useCallback(() => {
-      setValue((prev) =>
-        prev === undefined ? stepper ?? 1 : Math.min(prev + (stepper ?? 1), max)
-      );
-    }, [stepper, max]);
+  const handleLeave = useCallback(() => {
+    if (internalVal.endsWith('.')) {
+      setInternalVal(internalVal.slice(0, -1));
+    }
+  }, [internalVal]);
 
-    const handleDecrement = useCallback(() => {
-      setValue((prev) =>
-        prev === undefined
-          ? -(stepper ?? 1)
-          : Math.max(prev - (stepper ?? 1), min)
-      );
-    }, [stepper, min]);
+  const modifyValue = useCallback((inc: number) => {
+    isInternalChangeRef.current = true;
+    const numVal = Number(internalVal) + inc;
+    if (numVal < step) {
+      setInternalVal('');
+      return;
+    }
+    const strVal = (Math.round(numVal * 100000) / 100000).toString();
+    if (strVal.length <= maxLen) {
+      setInternalVal(strVal);
+    }
+  }, [internalVal, step, maxLen]);
 
-    useEffect(() => {
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (
-          document.activeElement ===
-          (combinedRef as React.RefObject<HTMLInputElement>).current
-        ) {
-          if (e.key === 'ArrowUp') {
-            handleIncrement();
-          } else if (e.key === 'ArrowDown') {
-            handleDecrement();
+  const decrementHandlers = useRepeatablePress(() => modifyValue(-step), 400, 50);
+  const incrementHandlers = useRepeatablePress(() => modifyValue(step), 400, 50);
+
+  const internalValNum = useMemo(() => {
+    if (internalVal === '' || internalVal === '.') {
+      return null;
+    }
+    if (internalVal.endsWith('.')) {
+      return Number(internalVal.slice(0, -1));
+    } else {
+      return Number(internalVal);
+    }
+  }, [internalVal]);
+
+  useEffect(() => {
+    if (!isInternalChangeRef.current) {
+      onValueChange(internalValNum);
+    }
+    isInternalChangeRef.current = false;
+  }, [internalValNum, onValueChange]);
+
+  useEffect(() => {
+    if (value === null) {
+      if (internalVal !== '') {
+        isInternalChangeRef.current = true;
+        setInternalVal('');
+      }
+    } else if (value.toString() !== internalVal) {
+      isInternalChangeRef.current = true;
+      setInternalVal(value.toString());
+    }
+  }, [value]);
+
+  return (
+    <div className="flex gap-2">
+      <Button
+        {...decrementHandlers}
+        size="icon"
+        type="button"
+        variant="outline"
+      >
+        <Minus className="h-4 w-4" />
+      </Button>
+      <Input
+        className="bg-background text-center"
+        id={id}
+        min="1"
+        onChange={(e) => {
+          const val = e.currentTarget.value;
+          if ((val === '' || val.match(numberRegex)) && val.length <= maxLen) {
+            isInternalChangeRef.current = true;
+            setInternalVal(val);
           }
-        }
-      };
+        }}
+        onFocusOut={handleLeave}
+        onKeyPress={(e) => {
+          if (e.key === 'Enter') {
+            handleLeave();
+          }
+        }}
+        value={internalVal}
+      />
+      <Button
+        {...incrementHandlers}
+        size="icon"
+        type="button"
+        variant="outline"
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+};
 
-      window.addEventListener('keydown', handleKeyDown);
-      return () => {
-        window.removeEventListener('keydown', handleKeyDown);
-      };
-    }, [handleIncrement, handleDecrement, combinedRef]);
-
-    useEffect(() => {
-      if (controlledValue !== undefined && controlledValue !== value) {
-        setValue(controlledValue);
-      }
-    }, [controlledValue]);
-
-    const handleChange = (values: {
-      value: string;
-      floatValue: number | undefined;
-    }) => {
-      const newValue =
-        values.floatValue === undefined ? undefined : values.floatValue;
-      setValue(newValue);
-      if (onValueChange) {
-        onValueChange(newValue);
-      }
-    };
-
-    const handleBlur = () => {
-      if (value !== undefined) {
-        if (value < min) {
-          setValue(min);
-          (ref as React.RefObject<HTMLInputElement>).current!.value =
-            String(min);
-        } else if (value > max) {
-          setValue(max);
-          (ref as React.RefObject<HTMLInputElement>).current!.value =
-            String(max);
-        }
-      }
-    };
-
-    return (
-      <div className="flex items-center">
-        <NumericFormat
-          value={value}
-          onValueChange={handleChange}
-          thousandSeparator={thousandSeparator}
-          decimalScale={decimalScale}
-          fixedDecimalScale={fixedDecimalScale}
-          allowNegative={min < 0}
-          valueIsNumericString
-          onBlur={handleBlur}
-          max={max}
-          min={min}
-          suffix={suffix}
-          prefix={prefix}
-          customInput={Input}
-          placeholder={placeholder}
-          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none rounded-r-none relative"
-          getInputRef={combinedRef} // Use combined ref
-          {...props}
-        />
-        <div className="flex flex-col">
-          <Button
-            aria-label="Increase value"
-            className="px-2 h-4.5 rounded-l-none rounded-br-none border-input border-l-0 border-b-[0.5px] focus-visible:relative"
-            variant="outline"
-            onClick={handleIncrement}
-            disabled={value === max}
-          >
-            <ChevronUp size={15} />
-          </Button>
-          <Button
-            aria-label="Decrease value"
-            className="px-2 h-4.5 rounded-l-none rounded-tr-none border-input border-l-0 border-t-[0.5px] focus-visible:relative"
-            variant="outline"
-            onClick={handleDecrement}
-            disabled={value === min}
-          >
-            <ChevronDown size={15} />
-          </Button>
-        </div>
-      </div>
-    );
-  }
-);
+export { NumberInput };

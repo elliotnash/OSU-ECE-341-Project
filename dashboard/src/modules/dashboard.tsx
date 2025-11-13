@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { NumberInput } from '@/components/ui/number-input';
+import { NumberInput } from '@/components/ui/number-input';;
 
 const HOST = import.meta.env.DEV ? 'localhost:3000' : location.host;
 const WS_URL = `ws://${HOST}/ws`;
@@ -107,7 +107,7 @@ export function Dashboard() {
                 alarmType={alarmType}
                 alarmValue={alarmValue}
                 onAlarmTypeChange={setAlarmType}
-                onAlarmValueChange={setAlarmValue}
+                onAlarmValueChange={(v) => setAlarmValue(v)}
                 triggered={thresholdTriggered}
             />
             <ChartCard unit={unit} points={points} />
@@ -184,7 +184,7 @@ function AlarmSettings(props: {
                 </div>
                 <div class="flex flex-col gap-2">
                     <Label htmlFor="alarmValue">Threshold Distance</Label>
-                    <NumberInput id="alarmValue" value={props.alarmValue} allowNegative={false} decimalScale={2} onValueChange={props.onAlarmValueChange} />
+                    <NumberInput id="alarmValue" maxLen={10} value={props.alarmValue} onValueChange={props.onAlarmValueChange} />
                 </div>
                 <Button onClick={() => {
                   if (props.alarmValue === null) return;

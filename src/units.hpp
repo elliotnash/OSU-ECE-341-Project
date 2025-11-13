@@ -10,6 +10,6 @@ enum class Unit {
   Foot,
 };
 
-double convertUnit(double value, Unit from, Unit to);
+float convertUnit(float value, Unit from, Unit to);
 
 String getUnitSymbol(Unit unit);

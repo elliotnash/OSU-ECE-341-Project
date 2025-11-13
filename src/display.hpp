@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Adafruit_SSD1306.h>
+#include <cc.h>
+
 #include "units.hpp"
 
 class Display {
@@ -18,7 +20,7 @@ class Display {
     bool flash_on = false;
     Adafruit_SSD1306 driver;
     Unit unit = Unit::Centimeter;
-    double value = 0.0;
+    u16_t value = 0;
     bool alert = false;
   public:
     Display(int sda, int scl, int refresh_interval);
@@ -26,7 +28,7 @@ class Display {
     void display();
     void clear();
     void setUnit(Unit unit);
-    void setValue(double value);
+    void setValue(u16_t value);
     void setAlert(bool alert);
     void update();
 };

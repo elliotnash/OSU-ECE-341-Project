@@ -28,7 +28,7 @@ void Display::clear() {
   driver.clearDisplay();
 }
 
-void Display::setValue(double value) {
+void Display::setValue(u16_t value) {
   this->value = value;
 }
 
@@ -56,7 +56,7 @@ void Display::update() {
 
   // If alert is not active or flash is on, display the value
   if (!alert || flash_on) {
-    String displayValue = String(convertUnit(value, Unit::Meter, unit)).substring(0, 4);
+    String displayValue = String(convertUnit(value, Unit::Millimeter, unit)).substring(0, 4);
     // Remove trailing dot
     if (displayValue.charAt(3) == '.') {
       displayValue.setCharAt(3, ' ');

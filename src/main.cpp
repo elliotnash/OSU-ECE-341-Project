@@ -16,7 +16,7 @@ Dashboard dashboard;
 // When the buffer is full, the oldest reading is overwritten.
 // Since our HTTP handlers are async, we use a mutex to prevent race conditions when reading/writing to the buffer.
 xSemaphoreHandle distanceMutex;
-float distanceBuffer[DISTANCE_WINDOW_SIZE];
+u16_t distanceBuffer[DISTANCE_WINDOW_SIZE];
 int bufferIndex = 0;
 
 /**
@@ -26,7 +26,7 @@ int bufferIndex = 0;
  * @return float distance
  */
 float readDistance() {
-  float distance = random(10000)/10000.0 * 20.0 + 90; // Random float between 90 and 110
+  u16_t distance = random(100) + 950; // Random uint16_t between 950 and 1050
   return distance;
 }
 
@@ -46,7 +46,7 @@ void processDistance() {
   }
   xSemaphoreGive(distanceMutex);
 
-  display.setValue(distance/100.0);
+  display.setValue(distance);
   display.update();
   dashboard.broadcastDistance(distance);
 }
@@ -77,5 +77,6 @@ void setup() {
 void loop() {
   delay(100);
   processDistance();
+  display.update();
   dashboard.update();
 }

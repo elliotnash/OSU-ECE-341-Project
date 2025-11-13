@@ -1,6 +1,6 @@
 #include "units.hpp"
 
-static double convertMeterToUnit(double value, Unit to) {
+static float convertMeterToUnit(float value, Unit to) {
   switch (to) {
     case Unit::Centimeter:
       return value * 100;
@@ -15,7 +15,7 @@ static double convertMeterToUnit(double value, Unit to) {
   }
 }
 
-static double convertUnitToMeter(double value, Unit from) {
+static float convertUnitToMeter(float value, Unit from) {
   switch (from) {
     case Unit::Centimeter:
       return value / 100;
@@ -30,8 +30,8 @@ static double convertUnitToMeter(double value, Unit from) {
   }
 }
 
-double convertUnit(double value, Unit from, Unit to) {
-  double meterValue = convertUnitToMeter(value, from);
+float convertUnit(float value, Unit from, Unit to) {
+  float meterValue = convertUnitToMeter(value, from);
   return convertMeterToUnit(meterValue, to);
 }
 

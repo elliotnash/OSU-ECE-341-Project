@@ -3,4 +3,4 @@ import os
 Import("env")  # pyright: ignore[reportUndefinedVariable]
 
 # Build the dashboard with pnpm
-env.Execute(f"cd dashboard && pnpm build")  # pyright: ignore[reportUndefinedVariable]
+env.Execute(f"cd dashboard && pnpm i && pnpm build")  # pyright: ignore[reportUndefinedVariable]

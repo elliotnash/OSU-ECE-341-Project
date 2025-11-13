@@ -32,5 +32,10 @@ jobs:
         with:
           version: 10
 
+      # Copy example .env file
+      - name: Copy .env file
+        run: cp .env.example .env
+
+      # Build PlatformIO project
       - name: Build PlatformIO Project
         run: pio run

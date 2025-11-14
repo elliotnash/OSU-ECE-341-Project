@@ -11,7 +11,7 @@ class Dashboard {
   IPAddress espIP;
   bool isAP = false;
   String getDistanceData();
-  u16_t (*distances)[DISTANCE_WINDOW_SIZE];
+  float (*distances)[DISTANCE_WINDOW_SIZE];
   SemaphoreHandle_t distancesMutex;
   const unsigned long cleanupInterval = 1000;
   unsigned long lastCleanup;
@@ -23,7 +23,7 @@ class Dashboard {
   Dashboard();
   void init();
   void update();
-  void broadcastDistance(u16_t distance);
-  void setDistances(u16_t (*distances)[DISTANCE_WINDOW_SIZE]);
+  void broadcastDistance(float distance);
+  void setDistances(float (*distances)[DISTANCE_WINDOW_SIZE]);
   void setDistancesMutex(SemaphoreHandle_t &mutex);
 };

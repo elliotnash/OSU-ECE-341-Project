@@ -5,51 +5,26 @@
 
 #include "display.hpp"
 #include "dashboard.hpp"
+#include "distance.hpp"
 
-#define I2C_SDA 22
-#define I2C_SCL 23
+#define I2C_SDA 19
+#define I2C_SCL 20
 
 Display display(I2C_SDA, I2C_SCL, SENSOR_REFRESH_INTERVAL);
 Dashboard dashboard;
-
-// Circular buffer to store distance readings. bufferIndex is the index of the next reading to be written.
-// When the buffer is full, the oldest reading is overwritten.
-// Since our HTTP handlers are async, we use a mutex to prevent race conditions when reading/writing to the buffer.
-xSemaphoreHandle distanceMutex;
-u16_t distanceBuffer[DISTANCE_WINDOW_SIZE];
-int bufferIndex = 0;
-
-/**
- * @brief Reads distance from sensor
- *
- * Unimplemented, currently returns a random float between 90 and 110
- * @return float distance
- */
-float readDistance() {
-  u16_t distance = random(100) + 950; // Random uint16_t between 950 and 1050
-  return distance;
-}
+DistanceSensor distanceSensor;
 
 /**
  * @brief Read, store, and send distance
  *
  * Reads distance from sensor, stores it in a buffer, and sends it to all websocket clients.
  */
-void processDistance() {
-  float distance = readDistance();
+// void processDistance() {
 
-  xSemaphoreTake(distanceMutex, portMAX_DELAY);
-  distanceBuffer[bufferIndex] = distance;
-  bufferIndex++;
-  if (bufferIndex >= 100) {
-    bufferIndex = 0;
-  }
-  xSemaphoreGive(distanceMutex);
-
-  display.setValue(distance);
-  display.update();
-  dashboard.broadcastDistance(distance);
-}
+//   display.setValue(distance);
+//   display.update();
+//   dashboard.broadcastDistance(distance);
+// }
 
 /**
  * @brief Main arduino setup function
@@ -61,22 +36,25 @@ void setup() {
   delay(2500);
   Serial.println("Starting up...");
 
-  distanceMutex = xSemaphoreCreateMutex();
-
   // Initialzie modules
   display.init();
   dashboard.init();
+  distanceSensor.init();
 
-  dashboard.setDistances(&distanceBuffer);
-  dashboard.setDistancesMutex(distanceMutex);
+  dashboard.setDistances(&distanceSensor.filtered);
+  dashboard.setDistancesMutex(distanceSensor.filteredMutex);
+
+  distanceSensor.addDistanceCallback([](uint16_t distance) {
+    display.setValue(distance);
+    dashboard.broadcastDistance(distance);
+  });
 }
 
 /**
  * @brief Main arduino loop function
  */
 void loop() {
-  delay(100);
-  processDistance();
   display.update();
   dashboard.update();
+  distanceSensor.update();
 }

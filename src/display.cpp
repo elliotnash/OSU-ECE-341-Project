@@ -28,7 +28,7 @@ void Display::clear() {
   driver.clearDisplay();
 }
 
-void Display::setValue(u16_t value) {
+void Display::setValue(float value) {
   this->value = value;
 }
 

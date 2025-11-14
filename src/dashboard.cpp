@@ -146,11 +146,11 @@ void Dashboard::onWSDisconnect(AsyncWebSocket *server, AsyncWebSocketClient *cli
   Serial.printf("WebSocket client #%u disconnected\n", client->id());
 }
 
-void Dashboard::broadcastDistance(u16_t distance) {
+void Dashboard::broadcastDistance(float distance) {
   ws.textAll("{\"event\":\"update\",\"data\":" + String(distance) + "}");
 }
 
-void Dashboard::setDistances(u16_t (*distances)[DISTANCE_WINDOW_SIZE]) {
+void Dashboard::setDistances(float (*distances)[DISTANCE_WINDOW_SIZE]) {
   this->distances = distances;
 }
 

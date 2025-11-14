@@ -20,7 +20,7 @@ class Display {
     bool flash_on = false;
     Adafruit_SSD1306 driver;
     Unit unit = Unit::Centimeter;
-    u16_t value = 0;
+    float value = 0;
     bool alert = false;
   public:
     Display(int sda, int scl, int refresh_interval);
@@ -28,7 +28,7 @@ class Display {
     void display();
     void clear();
     void setUnit(Unit unit);
-    void setValue(u16_t value);
+    void setValue(float value);
     void setAlert(bool alert);
     void update();
 };

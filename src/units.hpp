@@ -13,3 +13,4 @@ enum class Unit {
 float convertUnit(float value, Unit from, Unit to);
 
 String getUnitSymbol(Unit unit);
+Unit getUnitForSymbol(String symbol);

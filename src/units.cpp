@@ -51,3 +51,12 @@ String getUnitSymbol(Unit unit) {
       return "";
   }
 }
+
+Unit getUnitForSymbol(String symbol) {
+  if (symbol == "m") return Unit::Meter;
+  if (symbol == "cm") return Unit::Centimeter;
+  if (symbol == "mm") return Unit::Millimeter;
+  if (symbol == "in") return Unit::Inch;
+  if (symbol == "ft") return Unit::Foot;
+  return Unit::Centimeter;
+}

@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
+#include <ArduinoJson.h>
 
 #include "dashboard.hpp"
 
@@ -58,6 +59,8 @@ void Dashboard::setupServer() {
         onWSDisconnect(server, client);
         break;
       case WS_EVT_DATA:
+        onWSData(server, client, data, len);
+        break;
       case WS_EVT_PONG:
       case WS_EVT_ERROR:
         break;
@@ -138,12 +141,40 @@ void Dashboard::update() {
 
 void Dashboard::onWSConnect(AsyncWebSocket *server, AsyncWebSocketClient *client) {
   Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
-  // New client connected, send them the current distance buffer
+  // New client connected, send them the current distance buffer and unit
   client->text("{\"event\":\"data\",\"data\":" + this->getDistanceData() + "}");
+  client->text("{\"event\":\"unit\",\"data\":\"" + getUnitSymbol(this->unit) + "\"}");
 }
 
 void Dashboard::onWSDisconnect(AsyncWebSocket *server, AsyncWebSocketClient *client) {
   Serial.printf("WebSocket client #%u disconnected\n", client->id());
+}
+
+void Dashboard::onWSData(AsyncWebSocket *server, AsyncWebSocketClient *client, uint8_t *data, size_t len) {
+  JsonDocument doc;
+
+  DeserializationError error = deserializeJson(doc, data, len);
+  if (error) {
+    Serial.println("Error parsing JSON");
+    return;
+  }
+
+  String event = doc["event"];
+  if (event == "unit") {
+    Unit unit = getUnitForSymbol(doc["data"]);
+    this->unit = unit;
+    Serial.println("Switching to unit: " + getUnitSymbol(unit));
+    // Call callbacks
+    for (int i = 0; i < MAX_CALLBACKS; i++) {
+      if (unitCallbacks[i] != nullptr) {
+        unitCallbacks[i](unit);
+      }
+    }
+    // Update clients
+    ws.textAll("{\"event\":\"unit\",\"data\":\"" + getUnitSymbol(this->unit) + "\"}");
+  } else {
+    Serial.println("Unknown event: " + event);
+  }
 }
 
 void Dashboard::broadcastDistance(float distance) {
@@ -156,4 +187,23 @@ void Dashboard::setDistances(float (*distances)[DISTANCE_WINDOW_SIZE]) {
 
 void Dashboard::setDistancesMutex(SemaphoreHandle_t &mutex) {
   this->distancesMutex = mutex;
+}
+
+void Dashboard::addUnitChangeCallback(void (*callback)(Unit)) {
+  for (int i = 0; i < MAX_CALLBACKS; i++) {
+    if (unitCallbacks[i] == nullptr) {
+      unitCallbacks[i] = callback;
+      return;
+    }
+  }
+  Serial.println("Max unit change callbacks reached");
+}
+void Dashboard::removeUnitChangeCallback(void (*callback)(Unit)) {
+  for (int i = 0; i < MAX_CALLBACKS; i++) {
+    if (unitCallbacks[i] == callback) {
+      unitCallbacks[i] = nullptr;
+      return;
+    }
+  }
+  Serial.println("Unit change callback not found");
 }

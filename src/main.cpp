@@ -48,6 +48,9 @@ void setup() {
     display.setValue(distance);
     dashboard.broadcastDistance(distance);
   });
+  dashboard.addUnitChangeCallback([](Unit unit) {
+    display.setUnit(unit);
+  });
 }
 
 /**

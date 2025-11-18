@@ -37,7 +37,7 @@ injectWebSocket(server);
 const distances: number[] = Array.from({ length: 100 }, () => 0);
 
 function readDistance() {
-  const distance = Math.random() * 20 + 90;
+  const distance = Math.random() * 30 + 985;
   distances.push(distance);
   if (distances.length > 100) {
     distances.shift();

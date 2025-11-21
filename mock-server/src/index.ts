@@ -1,38 +1,43 @@
-import { createNodeWebSocket } from '@hono/node-ws'
-import { serve } from '@hono/node-server'
-import { Hono } from 'hono'
-import { WSContext } from 'hono/ws';
+import { serve } from "@hono/node-server";
+import { createNodeWebSocket } from "@hono/node-ws";
+import { Hono } from "hono";
+import type { WSContext } from "hono/ws";
 
-const app = new Hono()
+const app = new Hono();
 
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
 const connectedClients = new Set<WSContext<WebSocket>>();
 
-const wsApp = app.get('/ws', upgradeWebSocket(async () => ({
-  onOpen(_, ws) {
-    console.log(`Client connected`);
-    connectedClients.add(ws);
-    return ws.send(JSON.stringify({ event: "data", data: distances }));
-  },
-  onClose(_, ws) {
-    console.log(`Client disconnected`);
-    connectedClients.delete(ws);
-  },
-})))
+const wsApp = app.get(
+  "/ws",
+  upgradeWebSocket(async () => ({
+    onOpen(_, ws) {
+      console.log(`Client connected`);
+      connectedClients.add(ws);
+      return ws.send(JSON.stringify({ event: "data", data: distances }));
+    },
+    onClose(_, ws) {
+      console.log(`Client disconnected`);
+      connectedClients.delete(ws);
+    },
+  })),
+);
 
-app.get('/', (c) => {
-  return c.text('Hello Hono!')
-})
+app.get("/", (c) => {
+  return c.text("Hello Hono!");
+});
 
-const server = serve({
-  fetch: app.fetch,
-  port: 3000
-}, (info) => {
-  console.log(`Server is running on http://localhost:${info.port}`)
-})
+const server = serve(
+  {
+    fetch: app.fetch,
+    port: 3000,
+  },
+  (info) => {
+    console.log(`Server is running on http://localhost:${info.port}`);
+  },
+);
 injectWebSocket(server);
-
 
 const distances: number[] = Array.from({ length: 100 }, () => 0);
 

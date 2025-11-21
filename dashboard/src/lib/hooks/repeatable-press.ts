@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 
 const useRepeatablePress = (action: () => void, delay = 500, period = 100) => {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -36,7 +36,11 @@ const useRepeatablePress = (action: () => void, delay = 500, period = 100) => {
     };
   }, []);
 
-  return { onMouseDown: startPress, onMouseUp: stopPress, onMouseLeave: stopPress };
+  return {
+    onMouseDown: startPress,
+    onMouseUp: stopPress,
+    onMouseLeave: stopPress,
+  };
 };
 
 export { useRepeatablePress };

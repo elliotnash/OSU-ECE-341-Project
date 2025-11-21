@@ -8,7 +8,12 @@ export class Unit {
   static readonly INCH = new Unit("Inch", "in", 39.3701, 2);
   static readonly FOOT = new Unit("Foot", "ft", 3.28084, 3);
 
-  private constructor(public readonly name: string, public readonly symbol: string, public readonly conversionFactor: number, public readonly displayDecimals: number) {}
+  private constructor(
+    public readonly name: string,
+    public readonly symbol: string,
+    public readonly conversionFactor: number,
+    public readonly displayDecimals: number,
+  ) {}
 
   /**
    * Get a unit from a symbol.
@@ -17,7 +22,7 @@ export class Unit {
    * @returns The unit
    */
   public static fromSymbol(symbol: "m" | "cm" | "mm" | "in" | "ft"): Unit {
-    return Object.values(Unit).find(u => u.symbol === symbol);
+    return Object.values(Unit).find((u) => u.symbol === symbol);
   }
 
   /**
@@ -56,5 +61,5 @@ export class Unit {
  * @returns The converted value.
  */
 export function convertUnit(value: number, from: Unit, to: Unit): number {
-  return value * to.conversionFactor / from.conversionFactor;
+  return (value * to.conversionFactor) / from.conversionFactor;
 }

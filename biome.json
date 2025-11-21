@@ -1,0 +1,14 @@
+{
+  "$schema": "./dashboard/node_modules/@biomejs/biome/configuration_schema.json",
+  "formatter": {
+    "useEditorconfig": true
+  },
+  "files": {
+    "includes": ["mock-server/src/**/*", "dashboard/src/**/*", "!node_modules"]
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  }
+}

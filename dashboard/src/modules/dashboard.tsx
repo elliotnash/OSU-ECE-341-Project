@@ -20,6 +20,8 @@ type DataPoint = {
 const SAMPLE_RATE_HZ = 10;
 const BUFFER_SIZE = 100;
 
+const OUT_OF_RANGE_VALUE = 1000;
+
 function formatNow(): string {
     return new Date().toLocaleTimeString();
 }
@@ -38,7 +40,7 @@ export function Dashboard() {
         const pts: DataPoint[] = new Array(len);
         for (let i = 0; i < len; i++) {
             const t = now - (len - 1 - i) * intervalMs;
-            pts[i] = { timeLabel: new Date(t).toLocaleTimeString(), valueMm: valuesMm[i] };
+            pts[i] = { timeLabel: new Date(t).toLocaleTimeString(), valueMm: valuesMm[i] > OUT_OF_RANGE_VALUE ? NaN : valuesMm[i] };
         }
         return pts;
     }
@@ -92,7 +94,7 @@ export function Dashboard() {
                                 const timestamp = now - timeOffset;
                                 return {
                                     timeLabel: new Date(timestamp).toLocaleTimeString(),
-                                    valueMm: valueMm
+                                    valueMm: valueMm > OUT_OF_RANGE_VALUE ? NaN : valueMm
                                 };
                             });
                             if (prev.length === 0) {
@@ -216,7 +218,7 @@ export function Dashboard() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
             <DistanceCard
                 unit={unit}
-                value={latestDisplayValue}
+                value={Number.isNaN(latestDisplayValue) ? null : latestDisplayValue}
                 onUnitChange={setDeviceUnit}
             />
             <AlarmSettings

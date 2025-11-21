@@ -43,7 +43,7 @@ function readDistance() {
     distances.shift();
   }
   connectedClients.forEach((ws) => {
-    ws.send(JSON.stringify({ event: "update", data: distance }));
+    ws.send(JSON.stringify({ event: "update", data: [distance] }));
   });
 }
 setInterval(readDistance, 100);

@@ -48,18 +48,29 @@ void Display::update() {
   }
   last_update = now;
 
+  bool outOfRange = value >= 8000;
+
   // If alert is active, then flash the display every flash_interval milliseconds.
-  if (alert && now - last_flash >= flash_interval) {
+  if ((alert || outOfRange) && now - last_flash >= flash_interval) {
     flash_on = !flash_on;
     last_flash = now;
+  } else {
+    flash_on = true;
   }
 
-  // If alert is not active or flash is on, display the value
-  if (!alert || flash_on) {
-    String displayValue = String(convertUnit(value, Unit::Millimeter, unit)).substring(0, 4);
-    // Remove trailing dot
-    if (displayValue.charAt(3) == '.') {
-      displayValue.setCharAt(3, ' ');
+  // If flash is on, display the value
+  if (flash_on) {
+    String displayValue;
+    if (outOfRange) {
+      // The value is out of range, don't display it
+      displayValue = "----";
+    } else {
+      // The value is in range, display the value
+      displayValue = String(convertUnit(value, Unit::Millimeter, unit)).substring(0, 4);
+      // Remove trailing dot
+      if (displayValue.charAt(3) == '.') {
+        displayValue.setCharAt(3, ' ');
+      }
     }
 
     clear();

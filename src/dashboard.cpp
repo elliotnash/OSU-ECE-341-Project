@@ -4,6 +4,8 @@
 
 #include "dashboard.hpp"
 
+#define MAX_QUEUED_UPDATES WS_MAX_QUEUED_MESSAGES/8
+
 // These are pointers to the start and end of the compressed index.html file (in flash memory)
 // Embedded files are defined in platformio.ini and can be accessed via the assembly labels
 // To read, read index_html_end - index_html_start bytes from index_html_start
@@ -141,13 +143,19 @@ void Dashboard::update() {
 
 void Dashboard::onWSConnect(AsyncWebSocket *server, AsyncWebSocketClient *client) {
   Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
-  // New client connected, send them the current distance buffer and unit
+  // New client connected, create a queue for them
+  queuedUpdates[client->id()] = std::queue<float>();
+  // Drop messages on full queue
+  client->setCloseClientOnQueueFull(false);
+  // send them the current distance buffer and unit
   client->text("{\"event\":\"data\",\"data\":" + this->getDistanceData() + "}");
   client->text("{\"event\":\"unit\",\"data\":\"" + getUnitSymbol(this->unit) + "\"}");
 }
 
 void Dashboard::onWSDisconnect(AsyncWebSocket *server, AsyncWebSocketClient *client) {
   Serial.printf("WebSocket client #%u disconnected\n", client->id());
+  // Remove the client from the queue map
+  queuedUpdates.erase(client->id());
 }
 
 void Dashboard::onWSData(AsyncWebSocket *server, AsyncWebSocketClient *client, uint8_t *data, size_t len) {
@@ -182,10 +190,18 @@ void Dashboard::broadcastDistance(float distance) {
   ws.cleanupClients();
 
   for (auto client = ws.getClients().begin(); client != ws.getClients().end(); ++client) {
-    if (client->queueLen() >= WS_MAX_QUEUED_MESSAGES/2) {
-      Serial.println("WebSocket client #" + String(client->id()) + " has too many messages in queue, skipping");
-    } else {
-      client->text("{\"event\":\"update\",\"data\":[" + String(distance) + "]}");
+    // Queue the update for the client
+    queuedUpdates[client->id()].push(distance);
+
+    // If the message queue is not full, send all queued updates to the client (
+    if (client->queueLen() < MAX_QUEUED_UPDATES) {
+      String data = "[";
+      while (!queuedUpdates[client->id()].empty()) {
+        data += String(queuedUpdates[client->id()].front()) + ",";
+        queuedUpdates[client->id()].pop();
+      }
+      data.setCharAt(data.length() - 1, ']');
+      client->text("{\"event\":\"update\",\"data\":" + data + "}");
     }
   }
 }

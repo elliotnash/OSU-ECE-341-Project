@@ -2,6 +2,9 @@
 
 #include <ESPAsyncWebServer.h>
 #include <DNSServer.h>
+#include <unordered_map>
+#include <queue>
+
 #include "units.hpp"
 
 #define MAX_CALLBACKS 8
@@ -19,6 +22,7 @@ class Dashboard {
   SemaphoreHandle_t distancesMutex;
   const unsigned long cleanupInterval = 1000;
   unsigned long lastCleanup;
+  std::unordered_map<uint32_t, std::queue<float>> queuedUpdates;
   void setupWiFi();
   void setupServer();
   void onWSConnect(AsyncWebSocket *server, AsyncWebSocketClient *client);

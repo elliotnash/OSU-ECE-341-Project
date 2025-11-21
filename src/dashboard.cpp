@@ -178,7 +178,10 @@ void Dashboard::onWSData(AsyncWebSocket *server, AsyncWebSocketClient *client, u
 }
 
 void Dashboard::broadcastDistance(float distance) {
-  ws.textAll("{\"event\":\"update\",\"data\":" + String(distance) + "}");
+  // Cleanup expired WebSocket clients
+  ws.cleanupClients();
+
+  ws.textAll("{\"event\":\"update\",\"data\":[" + String(distance) + "]}");
 }
 
 void Dashboard::setDistances(float (*distances)[DISTANCE_WINDOW_SIZE]) {

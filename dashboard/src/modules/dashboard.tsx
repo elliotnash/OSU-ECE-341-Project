@@ -58,7 +58,7 @@ export function Dashboard() {
                     // Replace entire buffer
                     const values = (msg.data as number[]).slice(-BUFFER_SIZE);
                     setPoints(buildPointsFromArray(values));
-                } else if (msg?.event === 'unit' && msg.data in ["m", "cm", "mm", "in", "ft"]) {
+                } else if (msg?.event === 'unit' && ["m", "cm", "mm", "in", "ft"].includes(msg.data)) {
                     setUnit(Unit.fromSymbol(msg.data));
                 } else if (msg?.event === 'update' && typeof msg.data === 'number') {
                     // Append new sample and trim to 100

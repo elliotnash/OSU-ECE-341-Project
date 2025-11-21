@@ -20,6 +20,7 @@
 
   // Main body.
   set par(justify: true)
+  show figure: set block(breakable: true)
 
   body
 }

@@ -181,7 +181,13 @@ void Dashboard::broadcastDistance(float distance) {
   // Cleanup expired WebSocket clients
   ws.cleanupClients();
 
-  ws.textAll("{\"event\":\"update\",\"data\":[" + String(distance) + "]}");
+  for (auto client = ws.getClients().begin(); client != ws.getClients().end(); ++client) {
+    if (client->queueLen() >= WS_MAX_QUEUED_MESSAGES/2) {
+      Serial.println("WebSocket client #" + String(client->id()) + " has too many messages in queue, skipping");
+    } else {
+      client->text("{\"event\":\"update\",\"data\":[" + String(distance) + "]}");
+    }
+  }
 }
 
 void Dashboard::setDistances(float (*distances)[DISTANCE_WINDOW_SIZE]) {

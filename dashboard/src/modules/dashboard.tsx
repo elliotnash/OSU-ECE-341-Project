@@ -44,42 +44,152 @@ export function Dashboard() {
     }
 
     const [ws, setWs] = useState<WebSocket | null>(null);
+    const reconnectTimeoutRef = useRef<number | null>(null);
+    const reconnectAttemptsRef = useRef(0);
+    const isManuallyDisconnectedRef = useRef(false);
+    const wsRef = useRef<WebSocket | null>(null);
+
+    const connectWebSocket = useCallback(() => {
+        // Don't connect if already connected or manually disconnected
+        if (wsRef.current?.readyState === WebSocket.OPEN || isManuallyDisconnectedRef.current) {
+            return;
+        }
+
+        // Clear any pending reconnection attempts
+        if (reconnectTimeoutRef.current !== null) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+        }
+
+        try {
+            const socket = new WebSocket(WS_URL);
+            wsRef.current = socket;
+            setWs(socket);
+
+            socket.onopen = () => {
+                console.log('WebSocket connected');
+                reconnectAttemptsRef.current = 0; // Reset reconnect attempts on successful connection
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg?.event === 'data' && Array.isArray(msg.data)) {
+                        // Replace entire buffer
+                        const values = (msg.data as number[]).slice(-BUFFER_SIZE);
+                        setPoints(buildPointsFromArray(values));
+                    } else if (msg?.event === 'unit' && ["m", "cm", "mm", "in", "ft"].includes(msg.data)) {
+                        setUnit(Unit.fromSymbol(msg.data));
+                    } else if (msg?.event === 'update' && Array.isArray(msg.data)) {
+                        // Append all new samples from array (last element is most recent) and trim to BUFFER_SIZE
+                        setPoints(prev => {
+                            const values = msg.data as number[];
+                            const intervalMs = Math.round(1000 / SAMPLE_RATE_HZ);
+                            const now = Date.now();
+                            // Create points with timestamps, where last element is most recent (now)
+                            const newPoints: DataPoint[] = values.map((valueMm, index) => {
+                                const timeOffset = (values.length - 1 - index) * intervalMs;
+                                const timestamp = now - timeOffset;
+                                return {
+                                    timeLabel: new Date(timestamp).toLocaleTimeString(),
+                                    valueMm: valueMm
+                                };
+                            });
+                            if (prev.length === 0) {
+                                // If no previous points, return the new points (trimmed to BUFFER_SIZE)
+                                return newPoints.slice(-BUFFER_SIZE);
+                            }
+                            // Append new points and trim to BUFFER_SIZE
+                            const updated = [...prev, ...newPoints];
+                            if (updated.length > BUFFER_SIZE) {
+                                return updated.slice(-BUFFER_SIZE);
+                            }
+                            return updated;
+                        });
+                    }
+                } catch {
+                    // ignore malformed messages
+                }
+            };
+
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+
+            socket.onclose = (event) => {
+                console.log('WebSocket closed', event.code, event.reason);
+                wsRef.current = null;
+                setWs(null);
+
+                // Only reconnect if not manually disconnected and not a normal closure
+                if (!isManuallyDisconnectedRef.current && event.code !== 1000) {
+                    // Exponential backoff: start at 1s, max at 30s
+                    const baseDelay = 1000;
+                    const maxDelay = 30000;
+                    const delay = Math.min(baseDelay * Math.pow(2, reconnectAttemptsRef.current), maxDelay);
+                    reconnectAttemptsRef.current++;
+
+                    console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
+                    reconnectTimeoutRef.current = window.setTimeout(() => {
+                        connectWebSocket();
+                    }, delay);
+                }
+            };
+        } catch (error) {
+            console.error('Failed to create WebSocket:', error);
+            // Retry connection after a delay
+            reconnectTimeoutRef.current = window.setTimeout(() => {
+                connectWebSocket();
+            }, 1000);
+        }
+    }, []);
+
+    const disconnectWebSocket = useCallback(() => {
+        isManuallyDisconnectedRef.current = true;
+        if (reconnectTimeoutRef.current !== null) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+        }
+        if (wsRef.current) {
+            try {
+                wsRef.current.close();
+            } catch {}
+            wsRef.current = null;
+            setWs(null);
+        }
+    }, []);
 
     // Connect to WebSocket /ws and handle incoming data
     useEffect(() => {
-        const socket = new WebSocket(WS_URL);
+        connectWebSocket();
 
-        setWs(socket);
+        return () => {
+            disconnectWebSocket();
+        };
+    }, [connectWebSocket, disconnectWebSocket]);
 
-        socket.onmessage = (event) => {
-            try {
-                const msg = JSON.parse(event.data);
-                if (msg?.event === 'data' && Array.isArray(msg.data)) {
-                    // Replace entire buffer
-                    const values = (msg.data as number[]).slice(-BUFFER_SIZE);
-                    setPoints(buildPointsFromArray(values));
-                } else if (msg?.event === 'unit' && ["m", "cm", "mm", "in", "ft"].includes(msg.data)) {
-                    setUnit(Unit.fromSymbol(msg.data));
-                } else if (msg?.event === 'update' && typeof msg.data === 'number') {
-                    // Append new sample and trim to 100
-                    setPoints(prev => {
-                        const nextPoint: DataPoint = { timeLabel: formatNow(), valueMm: msg.data as number };
-                        if (prev.length === 0) return [nextPoint];
-                        const updated = [...prev, nextPoint];
-                        if (updated.length > BUFFER_SIZE) updated.shift();
-                        return updated;
-                    });
-                }
-            } catch {
-                // ignore malformed messages
+    // Handle page visibility changes (background/foreground)
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // Page is backgrounded - disconnect
+                console.log('Page backgrounded, disconnecting WebSocket');
+                disconnectWebSocket();
+            } else {
+                // Page is foregrounded - reconnect
+                console.log('Page foregrounded, reconnecting WebSocket');
+                isManuallyDisconnectedRef.current = false;
+                reconnectAttemptsRef.current = 0; // Reset attempts when manually reconnecting
+                connectWebSocket();
             }
         };
 
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         return () => {
-            try { socket.close(); } catch {}
-            setWs(null);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, []);
+    }, [connectWebSocket, disconnectWebSocket]);
 
     const latestDisplayValue = useMemo(() => {
         const last = points[points.length - 1]?.valueMm ?? null;
@@ -97,8 +207,10 @@ export function Dashboard() {
 
     const setDeviceUnit = useCallback((u: Unit) => {
         setUnit(u);
-        ws?.send(JSON.stringify({ event: 'unit', data: u.symbol }));
-    }, [ws]);
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ event: 'unit', data: u.symbol }));
+        }
+    }, []);
 
     return (
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">

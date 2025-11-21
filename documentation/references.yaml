@@ -1,0 +1,38 @@
+usb_spec_1_0:
+  type: report
+  title: Universal Serial Bus Specification
+  author: USB Implementers Forum
+  date: 1996-01-15
+  number: Revision 1.0
+  location: Beaverton, OR
+  url: "https://ieeemilestones.ethw.org/w/images/4/44/USB_1.0_Specification.pdf"
+
+lipo_battery_803035:
+  type: web
+  title: "3.7V 850mAh 3.14Wh Li-Polymer Replacement Li Lipo Rechargeable JST 3Pin NTC Thermistor 3 Wires Battery 803035"
+  author: AliExpress
+  url: "https://www.aliexpress.us/item/3256806172045171.html"
+  date: 2025-11-20
+
+esp32_project_instructions:
+  type: report
+  title: ESP32 Project Instructions
+  author: Oregon State University
+  date: 2025-09
+  location: Corvallis, OR
+  note: "Fall 2025 Course Handout"
+
+ncp1117_datasheet:
+  type: report
+  title: NCP1117, NCP11171, NCV1117 Data Sheet
+  author: onsemi
+  date: 2021-08
+  number: Rev. 31
+  url: "https://www.onsemi.com/download/data-sheet/pdf/ncp1117-d.pdf"
+
+esp32_wroom_32_datasheet:
+  type: report
+  title: ESP32-WROOM-32 Datasheet
+  author: Espressif Systems
+  date: 2018-06
+  number: Version 2.5

@@ -7,8 +7,8 @@
 #include "dashboard.hpp"
 #include "distance.hpp"
 
-#define I2C_SDA 19
-#define I2C_SCL 20
+#define I2C_SDA 20
+#define I2C_SCL 19
 
 Display display(I2C_SDA, I2C_SCL, SENSOR_REFRESH_INTERVAL);
 Dashboard dashboard;

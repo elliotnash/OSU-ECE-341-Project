@@ -74,6 +74,7 @@ void Display::update() {
     }
 
     clear();
+    driver.setRotation(2);
     driver.setTextSize(3);
     driver.setTextColor(WHITE);
     driver.setCursor(2, 5);

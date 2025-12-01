@@ -17,7 +17,7 @@ DistanceSensor::DistanceSensor(){
 }
 
 void DistanceSensor::init(){
-    //sensor.setTimeout(500);
+    calibration.init();
 
     if (!sensor.init())
     {
@@ -33,7 +33,7 @@ void DistanceSensor::update(){
   if(!sensor_initialized) return;
     unsigned long current_time = millis();
     if(current_time - last_sample_time >= sample_rate_ms){
-        last_distance = sensor.readRangeContinuousMillimeters();
+        last_distance = calibration.getCalibratedValue(sensor.readRangeContinuousMillimeters());
         data_array(last_distance);
         last_sample_time = current_time;
         xSemaphoreTake(filteredMutex, portMAX_DELAY);
@@ -44,7 +44,7 @@ void DistanceSensor::update(){
         for(int k=0; k<MAX_CALLBACKS; k++){
             if (callbacks[k] != nullptr) {
                 callbacks[k](last_distance);
-            } 
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 #include <VL53L0X.h>
+#include "calibration.hpp"
 
-#define EMA_DATA 50
+#define EMA_DATA 100
 #define e 2.71828
 #define MAX_CALLBACKS 8
 
@@ -17,6 +18,7 @@ class DistanceSensor{
     float weights[EMA_DATA];
     void (*callbacks[MAX_CALLBACKS])(uint16_t);
     int dataHead = 0;
+    Calibration calibration;
   public:
     DistanceSensor();
     void init();

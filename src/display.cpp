@@ -18,6 +18,7 @@ void Display::init() {
   if (!driver.begin(SSD1306_SWITCHCAPVCC, screen_address)) {
     Serial.println(F("Display allocation failed"));
   }
+  this->update();
 }
 
 void Display::display() {

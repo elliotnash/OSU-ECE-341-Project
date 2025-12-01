@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Preferences.h>
 #include <Adafruit_SSD1306.h>
 #include <cc.h>
 
@@ -22,6 +23,7 @@ class Display {
     Unit unit = Unit::Centimeter;
     float value = 0;
     bool alert = false;
+    Preferences preferences;
   public:
     Display(int sda, int scl, int refresh_interval);
     void init();

@@ -18,6 +18,9 @@ void Display::init() {
   if (!driver.begin(SSD1306_SWITCHCAPVCC, screen_address)) {
     Serial.println(F("Display allocation failed"));
   }
+  this->preferences.begin("dist_disp", false);
+  // Get the last used unit from the preferences (default to centimeter)
+  this->unit = (Unit)this->preferences.getUChar("unit", (uint8_t)Unit::Centimeter);
   this->update();
 }
 
@@ -35,6 +38,7 @@ void Display::setValue(float value) {
 
 void Display::setUnit(Unit unit) {
   this->unit = unit;
+  this->preferences.putUChar("unit", (uint8_t)unit);
 }
 
 void Display::setAlert(bool alert) {

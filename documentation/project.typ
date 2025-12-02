@@ -233,7 +233,9 @@
 = Engineering Requirements <engineering-requirements>
 + The system must be battery operated.
 
-+ The system must sense distances from 0.1m to 0.2m with a margin of error no greater than $plus.minus 10%$ margin of error.
++ The system must sense distances from 0.1m to 1.2m with a margin of error no greater than $plus.minus 10%$ margin of error.
+
++ tThe system will visually display the current distance value and unit.
 
 = Verification Process <verification-process>
 + {Enumerate a verification process here that any junior in the class could follow. Be as specific and expository as possible. Use prior lab documentation to guide your verification process. Imagine this process was handed to another team to complete who did not design your system. Write instructions they could follow}

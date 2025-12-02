@@ -6,10 +6,8 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
@@ -21,8 +19,6 @@ import { convertUnit, Unit } from "@/lib/units";
 
 const HOST = import.meta.env.DEV ? "localhost:3000" : location.host;
 const WS_URL = `ws://${HOST}/ws`;
-
-type AlarmType = "greater" | "less";
 
 type DataPoint = {
   timeLabel: string;
@@ -36,8 +32,6 @@ const OUT_OF_RANGE_VALUE = 1000;
 
 export function Dashboard() {
   const [unit, setUnit] = useState<Unit>(Unit.MILLIMETER);
-  const [alarmType, setAlarmType] = useState<AlarmType>("greater");
-  const [alarmValue, setAlarmValue] = useState<number | null>(null);
   const [points, setPoints] = useState<DataPoint[]>([]);
 
   // Build a 100-sample buffer of DataPoint from raw mm values (last value most recent)
@@ -221,14 +215,6 @@ export function Dashboard() {
     return convertUnit(last, Unit.MILLIMETER, unit);
   }, [points, unit]);
 
-  const thresholdTriggered = useMemo(() => {
-    if (alarmValue === null || points.length === 0) return false;
-    const last = points[points.length - 1].valueMm;
-    const threshold = convertUnit(alarmValue as number, unit, Unit.MILLIMETER);
-    if (alarmType === "greater") return last > threshold;
-    return last < threshold;
-  }, [alarmValue, alarmType, points, unit]);
-
   const setDeviceUnit = useCallback((u: Unit) => {
     setUnit(u);
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -237,30 +223,16 @@ export function Dashboard() {
   }, []);
 
   return (
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+    <div class="grid grid-cols-1 gap-6 max-w-5xl mx-auto">
       <DistanceCard
         unit={unit}
         value={Number.isNaN(latestDisplayValue) ? null : latestDisplayValue}
         onUnitChange={setDeviceUnit}
       />
-      <AlarmSettings
-        unit={unit}
-        alarmType={alarmType}
-        alarmValue={alarmValue}
-        onAlarmTypeChange={setAlarmType}
-        onAlarmValueChange={(v) => setAlarmValue(v)}
-        triggered={thresholdTriggered}
-      />
       <ChartCard unit={unit} points={points} />
     </div>
   );
 }
-
-// function Card(props: { children: preact.ComponentChildren; class?: string }) {
-//     return (
-//         <div class={`bg-card rounded-2xl shadow-md p-6 border border-border ${props.class ?? ''}`}>{props.children}</div>
-//     );
-// }
 
 function DistanceCard(props: {
   unit: Unit;
@@ -319,79 +291,6 @@ function DistanceCard(props: {
   );
 }
 
-function AlarmSettings(props: {
-  unit: Unit;
-  alarmType: AlarmType;
-  alarmValue: number | null;
-  onAlarmTypeChange: (t: AlarmType) => void;
-  onAlarmValueChange: (v: number | null) => void;
-  triggered: boolean;
-}) {
-  const stepMm = 1;
-  const convertedStep = useMemo(() => {
-    const stepConv = convertUnit(stepMm, Unit.MILLIMETER, props.unit);
-    return 1 - Math.floor(Math.log(stepConv) / Math.log(10));
-  }, [props.unit]);
-
-  useEffect(() => {
-    props.onAlarmValueChange(
-      convertUnit(props.alarmValue ?? null, Unit.MILLIMETER, props.unit),
-    );
-  }, [props.unit, props.onAlarmValueChange]);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Alarm Settings</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {/* <div class="uppercase text-xs tracking-wide text-muted-foreground text-center">Alarm Settings</div> */}
-        <div class="flex flex-col gap-3 mt-4">
-          <div class="flex flex-col gap-2">
-            <Label htmlFor="alarmType">Alarm Type</Label>
-            <Select
-              value={props.alarmType}
-              onValueChange={props.onAlarmTypeChange}
-            >
-              <SelectTrigger id="alarmType" className="w-full">
-                <SelectValue placeholder="Select a type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="greater">Greater than</SelectItem>
-                <SelectItem value="less">Less than</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div class="flex flex-col gap-2">
-            <Label htmlFor="alarmValue">Threshold Distance</Label>
-            <NumberInput
-              id="alarmValue"
-              maxLen={10}
-              step={convertedStep}
-              value={props.alarmValue}
-              onValueChange={props.onAlarmValueChange}
-            />
-          </div>
-          <Button
-            onClick={() => {
-              if (props.alarmValue === null) return;
-              const txt = `Alarm set: ${props.alarmType} than ${props.alarmValue} ${props.unit.symbol}`;
-              alert(txt);
-            }}
-          >
-            Set Alarm
-          </Button>
-          {props.triggered && (
-            <div class="bg-destructive text-destructive-foreground rounded px-3 py-3 text-center animate-[fadeIn_0.3s_ease-in-out]">
-              ⚠️ Distance threshold triggered!
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function ChartCard(props: { unit: Unit; points: DataPoint[] }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<LineChart | null>(null);
@@ -441,7 +340,7 @@ function ChartCard(props: { unit: Unit; points: DataPoint[] }) {
   }, []);
 
   return (
-    <Card className="col-span-2">
+    <Card>
       <CardHeader>
         <CardTitle>Distance ({props.unit.symbol})</CardTitle>
       </CardHeader>

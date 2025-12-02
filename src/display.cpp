@@ -21,7 +21,15 @@ void Display::init() {
   this->preferences.begin("dist_disp", false);
   // Get the last used unit from the preferences (default to centimeter)
   this->unit = (Unit)this->preferences.getUChar("unit", (uint8_t)Unit::Centimeter);
-  this->update();
+
+  // Display splash screen
+  clear();
+  driver.setRotation(2);
+  driver.setTextSize(3);
+  driver.setTextColor(WHITE);
+  driver.setCursor(2, 5);
+  driver.print("Booting");
+  display();
 }
 
 void Display::display() {
@@ -39,6 +47,10 @@ void Display::setValue(float value) {
 void Display::setUnit(Unit unit) {
   this->unit = unit;
   this->preferences.putUChar("unit", (uint8_t)unit);
+}
+
+Unit Display::getUnit() {
+  return this->unit;
 }
 
 void Display::update() {

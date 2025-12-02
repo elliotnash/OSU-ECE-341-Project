@@ -29,6 +29,7 @@ class Display {
     void display();
     void clear();
     void setUnit(Unit unit);
+    Unit getUnit();
     void setValue(float value);
     void update();
 };

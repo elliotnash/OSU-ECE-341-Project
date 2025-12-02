@@ -15,7 +15,6 @@ class Dashboard {
   DNSServer dnsServer;
   IPAddress espIP;
   bool isAP = false;
-  Unit unit = Unit::Centimeter;
   String getDistanceData();
   float (*distances)[DISTANCE_WINDOW_SIZE];
   void (*unitCallbacks[MAX_CALLBACKS])(Unit);
@@ -29,6 +28,7 @@ class Dashboard {
   void onWSDisconnect(AsyncWebSocket *server, AsyncWebSocketClient *client);
   void onWSData(AsyncWebSocket *server, AsyncWebSocketClient *client, uint8_t *data, size_t len);
   public:
+  Unit unit = Unit::Centimeter;
   Dashboard();
   void init();
   void update();

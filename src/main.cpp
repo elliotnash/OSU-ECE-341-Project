@@ -43,6 +43,7 @@ void setup() {
 
   dashboard.setDistances(&distanceSensor.filtered);
   dashboard.setDistancesMutex(distanceSensor.filteredMutex);
+  dashboard.unit = display.getUnit();
 
   distanceSensor.addDistanceCallback([](uint16_t distance) {
     display.setValue(distance);

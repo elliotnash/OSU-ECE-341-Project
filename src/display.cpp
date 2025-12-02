@@ -41,10 +41,6 @@ void Display::setUnit(Unit unit) {
   this->preferences.putUChar("unit", (uint8_t)unit);
 }
 
-void Display::setAlert(bool alert) {
-  this->alert = alert;
-}
-
 void Display::update() {
   // Update the display every refresh_interval milliseconds.
   unsigned long now = millis();
@@ -55,8 +51,8 @@ void Display::update() {
 
   bool outOfRange = value >= 8000;
 
-  // If alert is active, then flash the display every flash_interval milliseconds.
-  if ((alert || outOfRange) && now - last_flash >= flash_interval) {
+  // If out of range, then flash the display every flash_interval milliseconds.
+  if (outOfRange && now - last_flash >= flash_interval) {
     flash_on = !flash_on;
     last_flash = now;
   } else {

@@ -22,7 +22,6 @@ class Display {
     Adafruit_SSD1306 driver;
     Unit unit = Unit::Centimeter;
     float value = 0;
-    bool alert = false;
     Preferences preferences;
   public:
     Display(int sda, int scl, int refresh_interval);
@@ -31,6 +30,5 @@ class Display {
     void clear();
     void setUnit(Unit unit);
     void setValue(float value);
-    void setAlert(bool alert);
     void update();
 };

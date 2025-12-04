@@ -210,6 +210,9 @@
   // Power Outside stubs
   wire.wire("outside-to-power", ((rel: (-3,0), to: "power-port-dc-in"), "power-port-dc-in"), directed: true)
 
+  // Distance Outside stubs
+  wire.wire("outside-to-distance", ((rel: (-17,0), to: "distance-port-envin"), "distance-port-envin"), directed: true)
+
   // Display Outside stubs
   wire.wire("display-to-outside", ("display-port-usrout", (rel: (3,0), to: "display-port-usrout")), directed: true)
 })
@@ -220,23 +223,34 @@
 #let system-black-box-diagram = circuit({
   element.block(
     id: "distance",
-    w: 9,
-    h: 5,
+    w: 12,
+    h: 6,
     x: 0,
     y: 0,
-    name: [Distance Sensor #v(6em)],
+    name: [Distance Sensor System #v(7em)],
     ports: (
       west: (
-        (id: "dc-in", name: [mcu_distance_dcpwr]),
-        (id: "comm", name: [mcu_distance_comm]),
+        (id: "dc-in", name: [outside_power_dcpwr]),
         (id: "envin", name: [outside_distance_envin]),
+        (id: "usrin", name: [outside_dashboard_usrin]),
       ),
+      east: (
+        (id: "disp-usrout", name: [display_outside_usrout]),
+        (id: "dash-usrout", name: [dashboard_outside_usrout]),
+      )
     ),
     ports-margins: (
       west: (20%, 0%),
+      east: (20%, 0%),
     ),
-    fill: util.colors.orange
+    fill: gray.lighten(65%)
   )
+  wire.wire("outside-to-power", ((rel: (-1,0), to: "distance-port-dc-in"), "distance-port-dc-in"), directed: true)
+  wire.wire("outside-to-distance", ((rel: (-1,0), to: "distance-port-envin"), "distance-port-envin"), directed: true)
+  wire.wire("outside-to-dashboard", ((rel: (-1,0), to: "distance-port-usrin"), "distance-port-usrin"), directed: true)
+  wire.wire("distance-to-display", ("distance-port-disp-usrout", (rel: (1,0), to: "distance-port-disp-usrout")), directed: true)
+  wire.wire("distance-to-dashboard", ("distance-port-dash-usrout", (rel: (1,0), to: "distance-port-dash-usrout")), directed: true)
+
 })
 
 #system-black-box-diagram

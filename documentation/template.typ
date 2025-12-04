@@ -15,14 +15,21 @@
   )
   set text(font: "Libertinus Serif", lang: "en")
 
+  v(6em)
+  
   // Title row.
   align(center)[
-    #block(text(weight: 700, 1.75em, title))
+    #block(text(weight: 700, 2.5em, title))
   ]
 
   // Main body.
   set par(justify: true)
   show figure: set block(breakable: true)
+  
+  align(center + horizon, image("images/cover.jpeg", width: 75%))
+
+  colbreak()
+
 
   body
 }

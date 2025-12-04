@@ -33,10 +33,10 @@ ncp1117_datasheet:
 
 esp32_wroom_32_datasheet:
   type: report
-  title: ESP32-WROOM-32 Datasheet
+  title: ESP32-C6 Datasheet
   author: Espressif Systems
-  number: Version 3.6
-  url: https://documentation.espressif.com/esp32-wroom-32_datasheet_en.pdf
+  number: Version 1.4
+  url: https://documentation.espressif.com/esp32-c6_datasheet_en.pdf
 
 gy530_datasheet:
   type: report
@@ -107,3 +107,10 @@ adafruit_ssd1306_lib:
   organization: PlatformIO Registry
   url: "https://registry.platformio.org/libraries/adafruit/Adafruit%20SSD1306"
   date: 2025-06-24
+
+esp_async_ws_wiki:
+  type: web
+  title: "ESPAsyncWebServer Wiki"
+  organization: ESP32Async
+  url: https://github.com/ESP32Async/ESPAsyncWebServer/wiki
+  date: 2025-04-24

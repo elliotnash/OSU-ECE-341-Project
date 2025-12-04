@@ -8,18 +8,20 @@
 // Take a look at the file `template.typ` in the file panel
 // to customize this template and discover how it works.
 #show: project.with(
-  title: "Project Title",
+  title: "ESP32 Distance Sensor",
   authors: authors,
   team-number: "Team Number: 21"
 )
 
 #show: zebraw
 
-#v(2em)
+#let i2c = [I#super[2]C]
+
+#set enum(numbering: "1.a.i.")
 
 #show outline.entry.where(level: 1): strong
 #show outline.entry.where(level: 3): emph
-#outline(title: none, depth: 3)
+#outline(title: [Table of Contents], depth: 3)
 
 #pagebreak()
 
@@ -48,7 +50,7 @@
   
   wd-name("yahir"),
   [Designed and built the power block hardware. Designed the 3d printed external case.],
-  [#TODO[TBD]], 
+  [15], 
   
   wd-name("oliver"),
   [Designed and built the distance sensor block. Wrote the distance data filtering algorithm.],
@@ -61,27 +63,66 @@
 
 = System Level Block Diagram <system-level-block-diagram>
 
-#TODO[Create a system level block diagram with all system level interfaces labeled.]
+// Create a system level block diagram with all system level interfaces labeled.
 
-#TODO[Fig. 1: System level block diagram for the portable sensor.]
+// Fig. 1: System level block diagram for the portable sensor.
+
+#figure(system-black-box-diagram, caption: [System level black box diagram.]) <sys-bb-fig>
 
 = System Description <system-description>
-#TODO[Describe what the system does, make sure to include the names and functions of all system level interfaces. Make sure the system level interfaces are created directly from the functionality described in the engineering requirements.]
+
+// Describe what the system does, make sure to include the names and functions of all system level interfaces. Make sure the system level interfaces are created directly from the functionality described in the engineering requirements.
+
+The system is a self-contained, real-time distance monitoring device. The core function is to measure the distance to an object using a time-of-flight (ToF) sensor and display the live data to both an on-device OLED display and a web dashboard. The device is designed to be portable and battery operated. The system interacts with the outside environment through five system-level interfaces:
+
+== System Inputs
+
+*outside_power_dcpwr:* This interface is designed as the external energy source to the system, accepting 5V DC power over USB C. Its function is to charge the internal LiPo battery and provide power during wired operation.
+
+*outside_distance_envin:* This interface is the environmental input. It represents the physical distance between the sensor and the closest object to it. The VL53L0X constantly measures this distance.
+
+*outside_dashboard_usrin:* This interface corresponds to inputs from the web interface. It allows the user to select the display units (mm, cm, m, ft, or in). This controls how the distance data is formatted before it is displayed.
+
+== System Outputs
+
+*display_outside_usrout:* This is the output displayed on the OLED screen. It displays the measured distance and selected unit in real-time.
+
+*dashboard_outside_usrout:* This is the output displayed on the web dashboard. It mirrors the real-time distance and unit, allowing the user to remotely monitor it.
 
 = System Design Details and Validation <system-design-details-and-validation>
 == Top Level Architecture <top-level-architecture>
 
-#TODO[Insert figure here of the top-level architecture associated with your project. Make sure it includes the system level interfaces AND any internal interfaces.]
-
 #figure(scale(system-diagram, reflow: true, 70%), caption: [Top level block diagram.]) <top-block-fig>
+The system is structured into five interacting blocks designed for real-time distance monitoring and web-based user interaction. The centralized control is managed by the MCU Block (ESP32-C6 SuperMini), which coordinates data acquisition, processing, and communication across all modules.
 
-#TODO[Make sure to label all figures and include a thorough description of each.]
+The system starts with the Power Block, which includes the LiPo battery, charger, boost converter, and LDO logic. Power flows from the battery (or external source) and is boosted to 7.5V, stepped down to 5V via a Buck converter, and finally routed to the ESP32-C6's internal LDO to generate the stable 3.3V rail. The MCU receives its power via the power_mcu_dcpwr interface. The MCU then distributes regulated 3.3V power to the sensor and display blocks using the mcu_distance_dcpwr and mcu_display_dcpwr interfaces, respectively.
+
+The MCU Block initiates and manages all activity. It uses public C++ libraries to interact with the #i2c devices and handles all data processing. The MCU interfaces for the sensor are mcu_distance_dcpwr and mcu_distance_comm. The interfaces for the display are mcu_display_dcpwr and mcu_display_comm. These send regulated 3.3V DC power to each device, and use #i2c for the communication between the blocks and the MCU. The MCU gets its power from the power block, through the interface power_mcu_dcpwr. The MCU also takes an input from the dashboard, which is the units the user has selected the distance to be displayed in. This interface is mcu_dashboard_rf. The MCU also runs all the processing on the raw input data from the sensor, and hosts the dashboard.
+
+The Distance Sensor Block (VL53L0X on a GY-530 board) takes environmental input--the distance to an object--via the outside_distance_envin interface. It sends the raw measurement data back to the MCU via the mcu_distance_comm #i2c link. The MCU processes this raw input, applying calibration and running the EWMA filter algorithm, and concurrently hosts the web-based dashboard.
+
+The Display Block includes an oled display, and a display controller. The display controller interacts with the MCU via an #i2c connection, called mcu_display_comm. The display is powered via an internal interface called power_display_dcpwr, which supplies it with 3.3V of DC power. The display block also has an external output, called display_outside_usrout, which is the information that is actually shown on the oled display. 
+
+The Dashboard Block is served directly from the ESP32-C6. The dashboard data and live readings are served over http via the mcu_dashboard_rf interface. The dashboard allows for user interaction through the external input outside_dashboard_usrin (which dictates distance units) and displays the distance and selected unit to the user through the dashboard_outside_usrout interface.
 
 == Power Block Design Details, Yahir Raygoza Cortez <block-1-design-details-name-of-block-owner>
 
-#TODO[Insert Block Design Document details for block 1 here. Include at a minimum the block diagram, description, interface validation table, and artifacts.]
+// Insert Block Design Document details for block 1 here. Include at a minimum the block diagram, description, interface validation table, and artifacts.
 
-#figure(scale(power-diagram, 150%, reflow: true), caption: [#TODO[CAPTION ME]]) <power-block-fig>
+#figure(scale(power-diagram, 120%, reflow: true), caption: [Power block black box diagram.]) <power-block-fig>
+
+=== Description
+The Power Block is a highly customized, multi-stage energy management system designed for robust operation with a 1-cell LiPo battery. This circuitry guarantees stable power delivery across the system while safely managing the battery charge cycle. 
+
+=== Theory of Operation
+The block begins with a dedicated LiPo Charger that safely manages the incoming 5V external input (typically from USB) to control the voltage and current flow for the battery. For system operation, the varying voltage of the 1-cell LiPo battery (approx. 3.7V to 4.2V) is first sent through a Boost Converter that actively upconverts the voltage to an intermediate 7.5V. This 7.5V is then fed into a highly efficient Buck Converter that downconverts the voltage to a stable 5V, which is supplied as the primary input to the ESP32 development board. Finally, the 5V is channeled through the ESP32's internal Linear Voltage Regulator (LDO), which performs the final regulation step to produce the required, highly stable 3.3V operating rail. This intricate, stepped conversion process ensures the 3.3V rail remains constant (within the 3.0V to 3.6V tolerance) and possesses sufficient current capacity to reliably power the ESP32-C6 MCU—which demands up to 354 mA peak current—along with the external sensor and display loads.
+
+=== Artifacts
+#figure(image("images/LinearRegulator.svg", width: 107%), caption: [Linear Voltage Regulator Circuit Layout. ]) <linreg-schem>
+
+@linreg-schem shows the circuit used to regulate the voltage down to 5V to output towards the MCU. It utilizes a schottky diode, two capacitors, an LED and resistor, and an NCP1117 IC. The schottky diode prevents any reverse polarity from occurring. 
+
+=== Interface Validation Table
 
 #figure(table(
   columns: 3,
@@ -126,81 +167,70 @@
   
   [Ipeak: 500mA],
   [The esp32 board draws a maximum current of 500mA @esp32_wroom_32_datasheet],
-  [The ncp1117 can supply a maximum current of 800mA @ncp1117_datasheet, and the lipo battery can supply a maximum of 1C of discharge (850mA) @lipo_battery_803035, which will be used by the buck converter to increase the voltage from 5v to 7v, and decrease the current by the same ratio (1.4), so the power block supplies 600mA]
+  [The ncp1117 can supply a maximum current of 800mA @ncp1117_datasheet, and the lipo battery can supply a maximum of 1C of discharge (850mA) @lipo_battery_803035, which will be used by the buck converter to increase the voltage from 5v to 7v, and decrease the current by the same ratio (1.4), so the power block can supply 600mA, which is greater than 500mA]
 ))
 
-=== Artifacts
-#figure(image("images/LinearRegulator.svg"), caption: [Linear Voltage Regulator Circuit Layout])
+=== Verification
 
-=== Description
-The Power Block is a highly customized, multi-stage energy management system designed for robust operation with a 1-cell LiPo battery. This circuitry guarantees stable power delivery across the system while safely managing the battery charge cycle. 
+*Interface: outside_power_dcpwr (Input)*
++ *Vmin (4.75V) & Vmax (5.25V):* Connect the system to a USB power source. Using a multimeter, probe the VBUS and GND pads on the USB-C connector breakout. Verify the voltage reading is between 4.75V and 5.25V.
++ *Inominal (425mA) & Ipeak (500mA):* Place a multimeter in series with the positive VBUS line (or use a USB power meter). Operate the device in its nominal state (charging) and peak state (charging + Wi-Fi active). Verify the current draw aligns with the expected values.
 
-=== Theory of Operation
-The block begins with a dedicated LiPo Charger that safely manages the incoming 5V external input (typically from USB) to control the voltage and current flow for the battery. For system operation, the varying voltage of the 1-cell LiPo battery (approx. 3.7V to 4.2V) is first sent through a Boost Converter that actively upconverts the voltage to an intermediate 7.5V. This 7.5V is then fed into a highly efficient Buck Converter that downconverts the voltage to a stable 5V, which is supplied as the primary input to the ESP32 development board. Finally, the 5V is channeled through the ESP32's internal Linear Voltage Regulator (LDO), which performs the final regulation step to produce the required, highly stable 3.3V operating rail. This intricate, stepped conversion process ensures the 3.3V rail remains constant (within the 3.0V to 3.6V tolerance) and possesses sufficient current capacity to reliably power the ESP32-C6 MCU—which demands up to 354 mA peak current—along with the external sensor and display loads.
+*Interface: regulator_mcu_dcpwr (Output)*
++ *Vmin (4.9V) & Vmax (5.1V):* With the system powered, use a multimeter to measure the voltage at the output terminal of the 5V regulator (Buck Converter). Verify the voltage reads between 4.9V and 5.1V relative to the system ground.
++ *Inominal (100mA) & Ipeak (500mA):* Place a multimeter in series between the 5V regulator output and the ESP32-C6 5V input pin. Measure the current draw during normal operation and during peak load (Wi-Fi transmission) to confirm it stays within the supplied limits.
 
 == MCU Block Design Details, Oliver Siemens <block-2-design-details-name-of-block-owner>
 
-#TODO[Insert Block Design Document details for block 2 here.Include at a minimum the block diagram, description, interface validation table, and artifacts.]
+// Insert Block Design Document details for block 2 here.Include at a minimum the block diagram, description, interface validation table, and artifacts.
 
-#figure(scale(mcu-diagram, 150%, reflow: true), caption: [#TODO[CAPTION ME]]) <mcu-block-fig>
+#figure(scale(mcu-diagram, 120%, reflow: true), caption: [MCU block black box diagram.]) <mcu-block-fig>
 
-#figure(table(
-  columns: 3,
-  table.header(
-    [*Interface Property*],
-    [*Why is this interface this value?*],
-    [*Why do you know that your #underline[system] design details meet or exceed each property (reference block details as needed)?*]
-  ),
-  
-  table.header(level: 2, table.cell(colspan: 3)[*regulator_mcu_dcpwr: Input*]),
-  [Vmin: 4.9V],
-  [The minimum voltage output of the ncp1117 voltage regulator is 5v - 2% @ncp1117_datasheet],
-  [The voltage regulator utilizes an NCP1117 IC that takes an input voltage of 6.5V to 12V which will convert it to a fixed output voltage of 4.9V minimum. This was verified through testing and is also specified in the datasheet @ncp1117_datasheet],
-  
-  [Vmax: 5.1V],
-  [The maximum voltage output of the ncp1117 voltage regulator is 5v + 2% @ncp1117_datasheet],
-  [The voltage regulator utilizes an NCP1117 IC that takes an input voltage of 6.5V to 12V which will convert it to a fixed output voltage of 5.1V maximum. This was verified through testing and is also specified in the datasheet @ncp1117_datasheet],
-  
-  [Inominal: 100mA],
-  [The esp32 board draws an average current of 100mA @esp32_wroom_32_datasheet],
-  [The ncp1117 can supply a maximum current of 800mA @ncp1117_datasheet, and the lipo battery can supply a maximum of 1C of discharge (850mA) @lipo_battery_803035, which will be used by the buck converter to increase the voltage from 5v to 7v, and decrease the current by the same ratio (1.4), so the power block supplies 600mA], 
-  
-  [Ipeak: 500mA],
-  [The esp32 board draws a maximum current of 500mA @esp32_wroom_32_datasheet],
-  [The ncp1117 can supply a maximum current of 800mA @ncp1117_datasheet, and the lipo battery can supply a maximum of 1C of discharge (850mA) @lipo_battery_803035, which will be used by the buck converter to increase the voltage from 5v to 7v, and decrease the current by the same ratio (1.4), so the power block supplies 600mA],
-  table.header(level: 2, table.cell(colspan: 3)[*sensor_mcu_comm: I/O*]),
-  [Protocol: I2C],[I2C is the only communication protocol that the GY-530 supports @gy530_datasheet],[Our code defines the communication protocol that the esp32 c6 supermini uses, which we have set to be I2C @gh_repo],
-  [Baud rate: 100kHz],[This is the default baud rate for the arduino wire library],[Our code uses the default baud rate defined by the arduino wire library @gh_repo],
-  table.header(level: 2, table.cell(colspan: 3)[*mcu_sensor_dcpwr: Output*]),
-  [Vmin: 3.234v],
-  [The 3.3v voltage regulator on the esp32 c6 supermini has a range of - 2% @me6211_datasheet],
-  [The onboard voltage regulator on the esp32 c6 supermini board is a ME6211C33. The ME6211C33 has an output range of +/- 2% when the regulated output voltage is greater than 2v.@me6211_datasheet],
-  
-  [Vmax: 3.366v],
-  [The 3.3v voltage regulator on the esp32 c6 supermini has a range of + 2% @me6211_datasheet],
-  [The onboard voltage regulator on the esp32 c6 supermini board is a ME6211C33. The ME6211C33 has an output range of +/- 2% when the regulated output voltage is greater than 2v.@me6211_datasheet],
-  
-  [Inominal: $5 mu$A],[The GY-530 has a nominal current draw of $5 mu$A when it is idle @gy530_datasheet],[The onboard voltage regulator on the esp32 c6 supermini board can supply up to 500mA @me6211_datasheet, and the maximum current draw for board is 354mA @esp32_c6_sm, leaving plenty of current headroom for the sensor.],
-  [Ipeak: 6mA],[The GY-530 has a peak current draw of 6mA when it is reading data @gy530_datasheet],[The onboard voltage regulator on the esp32 c6 supermini board can supply up to 500mA @me6211_datasheet, and the maximum current draw for board is 354mA @esp32_c6_sm, leaving plenty of current headroom for the sensor.],
-  table.header(level: 2, table.cell(colspan: 3)[*mcu_display_comm: I/O*]),
-  [Protocol: I2C],[The ssd1306 display driver we used only supports I2C @ssd1306_datasheet],[Our code defines the communication protocol that the esp32 c6 supermini uses, which we have set to be I2C @gh_repo],
-  [Baud rate: 100kHz],[This is the default baud rate for the arduino wire library],[Our code uses the default baud rate defined by the arduino wire library @gh_repo],
-  table.header(level: 2, table.cell(colspan: 3)[*mcu_display_dcpwr: Output*]),
-  [Vmin: 3.234v],
-  [The 3.3v voltage regulator on the esp32 c6 supermini has a range of - 2% @me6211_datasheet],
-  [The onboard voltage regulator on the esp32 c6 supermini board is a ME6211C33. The ME6211C33 has an output range of +/- 2% when the regulated output voltage is greater than 2v.@me6211_datasheet],
-  
-  [Vmax: 3.366v],
-  [The 3.3v voltage regulator on the esp32 c6 supermini has a range of + 2% @me6211_datasheet],
-  [The onboard voltage regulator on the esp32 c6 supermini board is a ME6211C33. The ME6211C33 has an output range of +/- 2% when the regulated output voltage is greater than 2v.@me6211_datasheet],
-  
-  [Inominal: 4.73mA],[The typical current draw for the display at 50% illuminated is 4.3mA @ug2832_datasheet. The typical current draw for the display controller is $430mu$A @ssd1306_datasheet, so the total nominal current is 4.73mA],[The onboard voltage regulator on the esp32 c6 supermini board can supply up to 500mA @me6211_datasheet, and the maximum current draw for board is 354mA @esp32_c6_sm, leaving plenty of current headroom for the display.],
-  [Ipeak: 6.18mA],[The max current draw for the display at 50% illuminated is 5.4mA @ug2832_datasheet. The max current draw for the display controller is $780mu$A @ssd1306_datasheet, so the total peak current is 6.18mA],[The onboard voltage regulator on the esp32 c6 supermini board can supply up to 500mA @me6211_datasheet, and the maximum current draw for board is 354mA @esp32_c6_sm, leaving plenty of current headroom for the display.],
- 
-))
+=== Description
+The MCU block (ESP32-C6) is the central processing unit and control system for the application. Its core function is to manage data acquisition, processing, and output. 
+
+=== Theory of Operation
+
+To better facilitate collaborative development, a class based approach was used, drawing inspiration from the Adafruit Mult-tasking the arduino guide @multitasking_aurdino. This allows better encapsulation, reducing merge conflicts when working simultaneously.
+
+==== Software Architecture 
+
+The firmware is architected around a non-blocking multitasking model. Instead of a monolithic script that pauses execution using delay(), the system is divided into three primary C++ classes: DistanceSensor, Display, and Dashboard. Each class encapsulates its own hardware drivers, state variables, and timing logic. To communicate between subsystems, a callback system is employed, allowing an event driven approach.
+
+==== Main Loop and Scheduling 
+
+The system execution is driven by a main loop() that continuously cycles through the update() methods of each object. These methods utilize the system clock (millis()) to track time intervals, executing their specific tasks only when necessary:
+
+- The Sensor object polls the VL53L0X every 50ms.
+
+- The Display object refreshes the OLED screen only when new data is available or a flash is scheduled.
+
+- The Dashboard object handles network traffic asynchronously.
+
+This architecture ensures that the high-latency operations of one component (such as waiting for a sensor measurement) do not block the responsiveness of others (such as serving the web dashboard).
+
+==== Subsystem Implementation
+
+*Sensor Subsystem:* The DistanceSensor class manages the #i2c communication with the VL53L0X ToF sensor. It handles the raw data acquisition and internally applies the Exponential Weighted Moving Average (EWMA) filter. The class exposes the final filtered distance via a public getter method, ensuring other parts of the system always access stable data.
+
+*Display Subsystem:* The Display class abstracts the specific drawing commands for the SSD1306. It observes the system's shared state and handles the unit conversion logic (e.g., converting millimeters to inches) before rendering the frame. This separation of concerns allows the unit preferences to be changed globally without rewriting display logic.
+
+*Dashboard Subsystem:* Unlike the sensor and display which run in the main loop, the Dashboard class leverages the ESPAsyncWebServer library. This allows the MCU to handle HTTP requests and WebSocket handshakes asynchronously on a separate FreeRTOS task, preventing network latency from affecting the sensor reading timings. Real-time data is pushed to connected clients via WebSocket frames triggered by the sensor's update cycle.
+
+==== Filtering Algorithm
+The filtering algorithm is an exponential moving average (EMA) algorithm that cleans up the noisy data from the distance sensor block. The algorithm starts by generating an array to store the last x number of data points, we call the array the window. Then we must generate weights, which will be multiplied by each data point in the window and then added to find the current value. To generate the weights, we create a weights array, iterate through it, and generate the exponential at each data point with the equation:
+```cpp
+for(int k=0; k<EMA_DATA; k++){
+        weights[k] = pow(e,k-EMA_DATA);
+        //weights[k] = k - EMA_DATA;
+    }
+```
+The weights are then normalized with the equation:
+
+// The MCU begins by initializing the #i2c communication bus and acting as the 3.3V power source for the external sensor and display modules. The MCU continuously runs a data loop: it communicates with the sensor to read the raw distance measurement, applies custom calibration factors, and then feeds the resulting value into the Exponentially Weighted Moving Average (EWMA) filter to generate a stable, smooth reading. This final, polished data is then sent to the OLED display for visualization and simultaneously distributed to other software components via registered callbacks for real-time responsiveness.
 
 === Artifacts
-#figure(```c
+#figure(```cpp 
 /* This example shows how to use continuous mode to take
 range measurements with the VL53L0X. It is based on
 vl53l0x_ContinuousRanging_Example.c from the VL53L0X API.
@@ -241,58 +271,157 @@ void loop()
 ```, caption: [Sensor library code example #cite(<pololu_vl53l0x_lib>, supplement: [Examples/Continuous/Continuous.ino])]) <sensorlibrary-code>
 
 #figure(```c
-#include <SPI.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
 
-#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT) display;
 
 void setup() {
-  Serial.begin(9600);
-
-  // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  if(!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
-    Serial.println(F("SSD1306 allocation failed"));
-    for(;;); // Don't proceed, loop forever
+  if(!display.begin()) {
+    // Display initialization fail logic
   }
 
-void testdrawchar(void) {
+  // Draw text on display
   display.clearDisplay();
 
-  display.setTextSize(1);      // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_WHITE); // Draw white text
-  display.setCursor(0, 0);     // Start at top-left corner
-  display.cp437(true);         // Use full 256 char 'Code Page 437' font
-
-  // Not all the characters will fit on the display. This is normal.
-  // Library will draw what it can and the rest will be clipped.
-  for(int16_t i=0; i<256; i++) {
-    if(i == '\n') display.write(' ');
-    else          display.write(i);
-  }
+  display.setTextSize(1);       // Normal 1:1 pixel scale
+  display.setCursor(0, 0);      // Start at top-left corner
+  display.setTextColor(WHITE)   // White text
+  display.print("Hello, World") // Write text to display
 
   display.display();
-  delay(2000);
 }
-```, caption: [Display library code example #cite(<adafruit_ssd1306_lib>, supplement: [Examples/ssd1306_128x32_i2c/ssd1306_128x32_i2c.ino])]) <displaylibrary-code>
 
-=== Description
-The MCU block (ESP32-C6) is the central processing unit and control system for the application. Its core function is to manage data acquisition, processing, and output. 
+void loop() {}
+```, caption: [Display library code example, adapted from #cite(<adafruit_ssd1306_lib>, supplement: [Examples/ssd1306_128x32_i2c/ssd1306_128x32_i2c.ino])]) <displaylibrary-code>
 
-=== Theory of Operation
-The MCU begins by initializing the I2C communication bus and acting as the 3.3V power source for the external sensor and display modules. The MCU continuously runs a data loop: it communicates with the sensor to read the raw distance measurement, applies custom calibration factors, and then feeds the resulting value into the Exponentially Weighted Moving Average (EWMA) filter to generate a stable, smooth reading. This final, polished data is then sent to the OLED display for visualization and simultaneously distributed to other software components via registered callbacks for real-time responsiveness.
+=== Interface Validation Table
+
+#figure(table(
+  columns: 3,
+  table.header(
+    [*Interface Property*],
+    [*Why is this interface this value?*],
+    [*Why do you know that your #underline[system] design details meet or exceed each property (reference block details as needed)?*]
+  ),
+  
+  table.header(level: 2, table.cell(colspan: 3)[*regulator_mcu_dcpwr: Input*]),
+  [Vmin: 4.9V],
+  [The minimum voltage output of the ncp1117 voltage regulator is 5v - 2% @ncp1117_datasheet],
+  [The voltage regulator utilizes an NCP1117 IC that takes an input voltage of 6.5V to 12V which will convert it to a fixed output voltage of 4.9V minimum. This was verified through testing and is also specified in the datasheet @ncp1117_datasheet],
+  
+  [Vmax: 5.1V],
+  [The maximum voltage output of the ncp1117 voltage regulator is 5v + 2% @ncp1117_datasheet],
+  [The voltage regulator utilizes an NCP1117 IC that takes an input voltage of 6.5V to 12V which will convert it to a fixed output voltage of 5.1V maximum. This was verified through testing and is also specified in the datasheet @ncp1117_datasheet],
+  
+  [Inominal: 100mA],
+  [The esp32 board draws an average current of 100mA @esp32_wroom_32_datasheet],
+  [The ncp1117 can supply a maximum current of 800mA @ncp1117_datasheet, and the lipo battery can supply a maximum of 1C of discharge (850mA) @lipo_battery_803035, which will be used by the buck converter to increase the voltage from 5v to 7v, and decrease the current by the same ratio (1.4), so the power block supplies 600mA], 
+  
+  [Ipeak: 500mA],
+  [The esp32 board draws a maximum current of 500mA @esp32_wroom_32_datasheet],
+  [The ncp1117 can supply a maximum current of 800mA @ncp1117_datasheet, and the lipo battery can supply a maximum of 1C of discharge (850mA) @lipo_battery_803035, which will be used by the buck converter to increase the voltage from 5v to 7v, and decrease the current by the same ratio (1.4), so the power block supplies 600mA],
+
+  
+  table.header(level: 2, table.cell(colspan: 3)[*mcu_dashboard_rf: I/O*]),
+  [RF Protocol: Wi-Fi 802.11 b/g/n/ax],
+  [This is is a commonly supported protocol by clients as it uses the 2.4GHz band and supports backwards compatibility with Wi-Fi 5 and earlier.],
+  [The ESP32 natively supports 802.11 b/h/n/ax (Wi-Fi 6 with backwards compatibility), activated by the esp32 `WiFi` library @esp32_c6_sm.],
+  
+  [Data Protocol: HTTP + WS],
+  [HTTP is the widely supported protocol to server webpages. WebSockets support real-time bi-directional data transfer, allowing low latency distance updates.], 
+  [The `ESP32AsyncWebServer` library uses http and supports websocket handlers @esp_async_ws_wiki.],
+
+  [Port: 80],
+  [This is the default HTTP port, which allows clients to omit the port when connecting.],
+  [The code initializes the `AsyncWebServer` on port 80 #cite(<gh_repo>, supplement: [src/dashboard.cpp]).],
+
+  [Update Rate: 50Hz], [20ms polling allows low-latency measurements with smooth visual updates.], [The distance sensor code uses 20ms polling, and a websocket frame is pushed immediately after polling #cite(<gh_repo>, supplement: [src/distance.cpp])],
+  
+  
+  table.header(level: 2, table.cell(colspan: 3)[*sensor_mcu_comm: I/O*]),
+  [Protocol: #i2c],
+  [#i2c is the only communication protocol that the GY-530 supports @gy530_datasheet],
+  [Our code defines the communication protocol that the esp32 c6 supermini uses, which we have set to be #i2c @gh_repo],
+  
+  [Baud rate: 100kHz],
+  [This is the default baud rate for the arduino wire library],
+  [Our code uses the default baud rate defined by the arduino wire library @gh_repo],
+
+  
+  table.header(level: 2, table.cell(colspan: 3)[*mcu_sensor_dcpwr: Output*]),
+  [Vmin: 3.234v],
+  [The 3.3v voltage regulator on the esp32 c6 supermini has a range of - 2% @me6211_datasheet],
+  [The onboard voltage regulator on the esp32 c6 supermini board is a ME6211C33. The ME6211C33 has an output range of +/- 2% when the regulated output voltage is greater than 2v.@me6211_datasheet],
+  
+  [Vmax: 3.366v],
+  [The 3.3v voltage regulator on the esp32 c6 supermini has a range of + 2% @me6211_datasheet],
+  [The onboard voltage regulator on the esp32 c6 supermini board is a ME6211C33. The ME6211C33 has an output range of +/- 2% when the regulated output voltage is greater than 2v.@me6211_datasheet],
+  
+  [Inominal: $5 mu$A],[The GY-530 has a nominal current draw of $5 mu$A when it is idle @gy530_datasheet],[The onboard voltage regulator on the esp32 c6 supermini board can supply up to 500mA @me6211_datasheet, and the maximum current draw for board is 354mA @esp32_c6_sm, leaving plenty of current headroom for the sensor.],
+  
+  [Ipeak: 6mA],[The GY-530 has a peak current draw of 6mA when it is reading data @gy530_datasheet],[The onboard voltage regulator on the esp32 c6 supermini board can supply up to 500mA @me6211_datasheet, and the maximum current draw for board is 354mA @esp32_c6_sm, leaving plenty of current headroom for the sensor.],
+
+  
+  table.header(level: 2, table.cell(colspan: 3)[*mcu_display_comm: I/O*]),
+  [Protocol: #i2c],
+  [The ssd1306 display driver we used supports #i2c @ssd1306_datasheet],
+  [Our code defines the communication protocol that the esp32 c6 supermini uses, which we have set to be #i2c @gh_repo],
+  
+  [Baud rate: 100kHz],
+  [This is the default baud rate for the arduino wire library],
+  [Our code uses the default baud rate defined by the arduino wire library @gh_repo],
+
+  
+  table.header(level: 2, table.cell(colspan: 3)[*mcu_display_dcpwr: Output*]),
+  [Vmin: 3.234v],
+  [The 3.3v voltage regulator on the esp32 c6 supermini has a range of - 2% @me6211_datasheet],
+  [The onboard voltage regulator on the esp32 c6 supermini board is a ME6211C33. The ME6211C33 has an output range of +/- 2% when the regulated output voltage is greater than 2v.@me6211_datasheet],
+  
+  [Vmax: 3.366v],
+  [The 3.3v voltage regulator on the esp32 c6 supermini has a range of + 2% @me6211_datasheet],
+  [The onboard voltage regulator on the esp32 c6 supermini board is a ME6211C33. The ME6211C33 has an output range of +/- 2% when the regulated output voltage is greater than 2v.@me6211_datasheet],
+  
+  [Inominal: 4.73mA],[The typical current draw for the display at 50% illuminated is 4.3mA @ug2832_datasheet. The typical current draw for the display controller is $430mu$A @ssd1306_datasheet, so the total nominal current is 4.73mA],[The onboard voltage regulator on the esp32 c6 supermini board can supply up to 500mA @me6211_datasheet, and the maximum current draw for board is 354mA @esp32_c6_sm, leaving plenty of current headroom for the display.],
+  
+  [Ipeak: 6.18mA],[The max current draw for the display at 50% illuminated is 5.4mA @ug2832_datasheet. The max current draw for the display controller is $780mu$A @ssd1306_datasheet, so the total peak current is 6.18mA],[The onboard voltage regulator on the esp32 c6 supermini board can supply up to 500mA @me6211_datasheet, and the maximum current draw for board is 354mA @esp32_c6_sm, leaving plenty of current headroom for the display.],
+))
+
+=== Verification
+
+*Interface: regulator_mcu_dcpwr (Input)*
++ *Verification:* This interface is verified by measuring the voltage at the 5V input pin of the ESP32-C6 SuperMini to ensure it falls within the 4.9V - 5.1V range supplied by the Power Block.
+
+*Interface: sensor_mcu_comm (I/O)*
++ *Protocol (#i2c):* Connect a logic analyzer or oscilloscope to the SCL and SDA lines connecting the MCU and Sensor. Capture a transaction and decode the signals to verify standard #i2c protocol structure (Start bit, Address, ACK, Data, Stop bit).
++ *Baud Rate (100kHz):* Using the logic analyzer or oscilloscope, measure the frequency of the clock signal on the SCL line during a transmission to confirm it is approximately 100kHz.
+
+*Interface: mcu_sensor_dcpwr (Output)*
++ *Vmin (3.234V) & Vmax (3.366V):* Use a multimeter to measure the voltage between the 3V3 pin connected to the sensor and GND. Verify the reading is within the specified tolerance.
++ *Current (Inominal 5uA, Ipeak 6mA):* Place a multimeter in series with the sensor's power line to measure the current draw during idle and active ranging states.
+
+*Interface: mcu_display_comm (I/O)*
++ *Protocol (#i2c) & Baud Rate (100kHz):* Similar to the sensor interface, use a logic analyzer on the display's SCL/SDA lines to confirm #i2c protocol compliance and a 100kHz clock frequency.
+
+*Interface: mcu_display_dcpwr (Output)*
++ *Vmin (3.234V) & Vmax (3.366V):* Use a multimeter to measure the voltage at the display's VCC pin relative to GND. Verify it is within the 3.3V +/- 2% range.
++ *Current (Inominal 4.73mA, Ipeak 6.18mA):* Place a multimeter in series with the display's power input. Measure the current with the screen at 50% brightness (typical text) and 100% brightness (full white pixels) to verify the current draw.
 
 == Display Block Design Details, Elliot Nash <block-3-design-details-name-of-block-owner>
 
-#TODO[Insert Block Design Document details for block 3 here.Include at a minimum the block diagram, description, interface validation table, and artifacts.]
+// Insert Block Design Document details for block 3 here.Include at a minimum the block diagram, description, interface validation table, and artifacts.
 
-#figure(scale(display-diagram, 150%, reflow: true), caption: [#TODO[CAPTION ME]]) <display-block-fig>
+#figure(scale(display-diagram, 120%, reflow: true), caption: [Display block black box diagram.]) <display-block-fig>
+
+=== Description
+The display block uses an oled display board to display the distance and unit of measurement to the user. The display takes a user input (the unit to display the distance in), and gives a user output (it displays the measured distance and the units).
+
+=== Theory of Operation
+The display board is built around the SSD1306 driver IC. The boards operation is purely passive until commanded by the MCU block. The MCU acts as the graphics processor, first rendering the filtered distance data and interface elements, then transmitting this pixel data to the Display Block over #i2c. The display controller then displays the pixel data on the oled display.
+
+=== Interface Validation Table
 
 #figure(table(
   columns: 3,
@@ -313,7 +442,7 @@ The MCU begins by initializing the I2C communication bus and acting as the 3.3V 
   [Inominal: 4.73mA],[The typical current draw for the display at 50% illuminated is 4.3mA @ug2832_datasheet. The typical current draw for the display controller is $430mu$A @ssd1306_datasheet, so the total nominal current is 4.73mA],[The onboard voltage regulator on the esp32 c6 supermini board can supply up to 500mA @me6211_datasheet, and the maximum current draw for board is 354mA @esp32_c6_sm, leaving plenty of current headroom for the display.],
   [Ipeak: 6.18mA],[The max current draw for the display at 50% illuminated is 5.4mA @ug2832_datasheet. The max current draw for the display controller is $780mu$A @ssd1306_datasheet, so the total peak current is 6.18mA],[The onboard voltage regulator on the esp32 c6 supermini board can supply up to 500mA @me6211_datasheet, and the maximum current draw for board is 354mA @esp32_c6_sm, leaving plenty of current headroom for the display.],
   table.header(level: 2, table.cell(colspan: 3)[*mcu_display_comm: I/O*]),
-  [Protocol: I2C],[The ssd1306 display driver we used only supports I2C @ssd1306_datasheet],[Our code defines the communication protocol that the esp32 c6 supermini uses, which we have set to be I2C @gh_repo],
+  [Protocol: #i2c],[The ssd1306 display driver we used only supports #i2c @ssd1306_datasheet],[Our code defines the communication protocol that the esp32 c6 supermini uses, which we have set to be #i2c @gh_repo],
   [Baud rate: 100kHz],[This is the default baud rate for the arduino wire library],[Our code uses the default baud rate defined by the arduino wire library @gh_repo],
   table.header(level: 2, table.cell(colspan: 3)[*display_outside_usrout: Output*]),
     [Units: mm, cm, m, ft, in],
@@ -326,19 +455,34 @@ The MCU begins by initializing the I2C communication bus and acting as the 3.3V 
   [Minimum distance: 100mm],
   [The project instructions document specified an engineering requirement that the device must measure distances from 0.1m-1.2m @esp32_project_instructions], [Our device can accurately measure distances 100cm away],
 ))
-=== Artifacts
 
-=== Description
-The display block uses an oled display board to display the distance and unit of measurement to the user. The display takes a user input (the unit to display the distance in), and gives a user output (it displays the measured distance and the units).
+=== Verification
 
-=== Theory of Operation
-The display board is typically built around a driver IC like the SSD1306. The boards operation is purely passive until commanded by the MCU block. The MCU acts as the graphics processor, first rendering the filtered distance data and interface elements, then transmitting this pixel data to the Display Block over I2C. The display controller then displays the pixel data on the oled display.
+*Interface: mcu_display_dcpwr (Input)*
++ *Verification:* Verified by measuring the voltage across the VCC and GND pins on the OLED module to ensure it receives the regulated 3.3V from the MCU block.
+
+*Interface: mcu_display_comm (I/O)*
++ *Protocol (#i2c):* Verify that the display acknowledges #i2c commands by checking for valid ACK signals on the bus using a logic analyzer, or functionally by observing that the display successfully initializes and shows content.
+
+*Interface: display_outside_usrout (Output)*
++ *Units (mm, cm, m, ft, in):* Cycle through the unit options on the dashboard. Visually verify that the unit text on the OLED display changes to match the selection (e.g., "mm" changes to "in").
++ *Max Distance (1200mm) & Min Distance (100mm):* Place an object at 1200mm and 100mm from the sensor. Visually verify that the number displayed on the screen corresponds to these distances within the allowable error margin.
 
 == Distance Sensor Block Design Details, Oliver Siemens <block-4-design-details-name-of-block-owner>
 
-#TODO[Insert Block Design Document details for block 4 here.Include at a minimum the block diagram, description, interface validation table, and artifacts.]
+// Insert Block Design Document details for block 4 here.Include at a minimum the block diagram, description, interface validation table, and artifacts.
 
-#figure(scale(distance-diagram, 150%, reflow: true), caption: [#TODO[CAPTION ME]]) <distance-block-fig>
+#figure(scale(distance-diagram, 120%, reflow: true), caption: [Distance sensor block black box diagram.]) <distance-block-fig>
+
+=== Description
+
+The sensor block encompasses the distance measurement sensor and the corresponding code for initialization, control, and communication. Data transfer to the microcontroller is handled through the #i2c communication protocol, utilizing the SCL and SDA lines. Power for the sensor is sourced from the MCU block via the stable 3.3V output pin on the ESP32-C6 SuperMini board. Its primary function is to measure and provide external environmental data (distance).
+
+=== Theory of Operation
+
+The Sensor Block operates using time-of-flight (ToF) measurement, which uses emitted light to calculate the distance to an object. The core function is initiated by the microcontroller Unit (mcu) through the #i2c interface, utilizing the SCL (clock) and SDA (data) lines for command and control. First, the sensor emits an invisible light pulse, then it precisely measures the time until the reflected light pulse returns to the receiver. Using the known speed of light, the sensor's internal circuitry calculates the raw distance to the target. This raw measurement is then immediately stored in the sensor's internal memory registers and is concurrently accessed by the MCU via a standard #i2c read transaction. The entire process is continuous and periodic, driven by the sampling rate configured during initialization, allowing the block to provide real-time environmental data to the main system.
+
+=== Interface Validation Table
 
 #figure(table(
   columns: 3,
@@ -363,10 +507,11 @@ The display board is typically built around a driver IC like the SSD1306. The bo
  
   table.header(level: 2, table.cell(colspan: 3)[*mcu_sensor_comm: I/O*]),
   
-  [Protocol: I2C],[I2C is the only communication protocol that the GY-530 supports @gy530_datasheet],[Our code defines the communication protocol that the esp32 c6 supermini uses, which we have set to be I2C @gh_repo],
+  [Protocol: #i2c],[#i2c is the only communication protocol that the GY-530 supports @gy530_datasheet],[Our code defines the communication protocol that the esp32 c6 supermini uses, which we have set to be #i2c @gh_repo],
   [Baud rate: 100kHz],[This is the default baud rate for the arduino wire library],[Our code uses the default baud rate defined by the arduino wire library @gh_repo],
-
+  
   table.header(level: 2, table.cell(colspan: 3)[*outside_sensor_envin: Input*]),
+
   [Maximum distance: 1200mm],
   [The project instructions document specified an engineering requirement that the device must measure distances from 0.1m-1.2m @esp32_project_instructions],
   [Our device can accurately measure distances 1.2m away],
@@ -376,53 +521,62 @@ The display board is typically built around a driver IC like the SSD1306. The bo
   [Our device can accurately measure distances 100cm away],
 ))
 
-=== Artifacts
-#figure(zebraw(lang: [Pseudocode], ```p
-FUNCTION Calculate_Simple_Weighted_Average(PastDistances, WindowSize):
+=== Verification
 
-// --- Step 1: Figure out the 'Importance' (The Weights) ---
+*Interface: mcu_sensor_dcpwr (Input)*
++ *Verification:* Measure the voltage at the VIN pin of the GY-530 breakout board to ensure it receives the regulated 3.3V from the MCU.
 
-// The code first calculates a set of special weights (coefficients).
-// Newest data points get the biggest weights, and
-// older data points get smaller weights that decay exponentially.
+*Interface: mcu_sensor_comm (I/O)*
++ *Protocol (#i2c):* Verify the sensor responds to its #i2c address (default 0x29) by scanning the #i2c bus with the MCU or a logic analyzer and checking for an ACK response.
 
-// Then, all these weights are adjusted so they add up perfectly to 1.0.
-
-DECLARE FilteredResult as FLOAT = 0.0
-
-// --- Step 2: Calculate the Result ---
-
-// Now, go through every distance reading in your recorded history window.
-FOR EACH reading IN PastDistances:
-    
-    // Multiply the distance reading by its matching "importance" weight.
-    // (Newest readings are multiplied by the biggest weights.)
-    
-    // Add that weighted result to your total.
-    FilteredResult = FilteredResult + (reading \* weight)
-END FOR
-
-// The final total is your smooth, filtered reading!
-RETURN FilteredResult
-
-
-END FUNCTION
-```), caption: [Pseudo-code for EMA filtering]) <filter-code>
-
-=== Description
-
-The sensor block encompasses the distance measurement sensor and the corresponding code for initialization, control, and communication. Data transfer to the microcontroller is handled through the I2C communication protocol, utilizing the SCL and SDA lines. Power for the sensor is sourced from the MCU block via the stable 3.3V output pin on the ESP32-C6 SuperMini board. Its primary function is to measure and provide external environmental data (distance).
-
-=== Theory of Operation
-
-The Sensor Block operates using time-of-flight (ToF) measurement, which uses emitted light to calculate the distance to an object. The core function is initiated by the microcontroller Unit (mcu) through the I2C interface, utilizing the SCL (clock) and SDA (data) lines for command and control. First, the sensor emits an invisible light pulse, then it precisely measures the time until the reflected light pulse returns to the receiver. Using the known speed of light, the sensor's internal circuitry calculates the raw distance to the target. This raw measurement is then immediately stored in the sensor's internal memory registers and is concurrently accessed by the MCU via a standard I2C read transaction. The entire process is continuous and periodic, driven by the sampling rate configured during initialization, allowing the block to provide real-time environmental data to the main system.
+*Interface: outside_sensor_envin (Input)*
++ *Max Distance (1200mm) & Min Distance (100mm):* Set up a test fixture with a target at exactly 100mm and 1200mm. Capture the raw data readings printed to the serial monitor from the MCU to verify the sensor is detecting objects at these limits.
 
 
 == Dashboard Block Design Details, Elliot Nash <block-5-design-details-name-of-block-owner>
 
-#figure(scale(dashboard-diagram, 150%, reflow: true), caption: [#TODO[CAPTION ME]]) <dashboard-block-fig>
+// Insert Block Design Document details for block 5 here.Include at a minimum the block diagram, description, interface validation table, and artifacts.
 
-#TODO[Insert Block Design Document details for block 5 here.Include at a minimum the block diagram, description, interface validation table, and artifacts.]
+#figure(scale(dashboard-diagram, 120%, reflow: true), caption: [Dashboard block black box diagram.]) <dashboard-block-fig>
+
+=== Description
+
+The Dashboard Block is a lightweight web-based user interface hosted directly on the ESP32-C6 microcontroller. It serves as the wireless interaction point for the system, allowing users to remotely monitor real-time distance measurements and configure the device's unit of measurement (mm, cm, m, ft, in). It is developed using the Preact framework, and is designed as a single-page application (SPA) that can run on any device with a web-browser connected to the system's Wi-Fi network.
+
+=== Theory of Operation
+
+==== Build Pipeline
+
+Due to both the space constraints on the microcontroller flash and the high costs associated with transferring large amounts of data over WiFi, a small bundle size was needed. However, the ergonomics of React make the developer experience much better, and its large ecosystems allows taking of advantage libraries such as shadcn and chartist. Thus, Preact was chosen due to it's drop-in React compatibility but much smaller bundle size. To build and bundle the dashboard, Vite is used. It is then fed into the `vite-plugin-singlefile` plugin, which inlines all HTML/JS/CSS into a single index.html, drastically simplifying the microcontroller implementation as it only needs to serve one file. `vite-plugin-compression` is then used to gzip `index.html`, resulting in a final bundle size around 60kB.
+
+==== Runtime Operation
+
+During operation, the interface relies on a hybrid HTTP and WebSocket architecture:
+
+1. *Initialization (HTTP)*: When a user navigates to the ESP32's IP address, the microcontroller serves the static, Gzipped HTML payload. The client's browser automatically decompresses, parses, and executes the Preact application.
+
+2. *Real-Time Data (WebSocket)*: Immediately upon loading, the application establishes a persistent, bi-directional WebSocket connection with the MCU.
+
+  1. *MCU to Client events:* The MCU broadcasts distance updates to the client as soon as they are processed by the sensor algorithm. Because the connection is persistent, this avoids the overhead of repeated HTTP headers, allowing for a smooth, low-latency visualization of data. On unit updates, the MCU broadcasts the new unit to all connected clients, allowing them to stay in sync.
+
+  2. *Client to MCU events:* When the user selects a new unit on the dashboard, the dashboard transmits a frame over the WebSocket. The MCU reads this message, parses the requested unit, and updates the global system state.
+
+The user interface then displays these updates distance readings, storing the last 10 seconds of data to be displayed in a graph.
+  
+=== Artifacts
+
+#subpar.grid(
+  figure(image("images/dashboard/dash_light.png")),
+  figure(image("images/dashboard/dash_dark.png")),
+  columns: (1fr, 1fr),
+  caption: [Dashboard user interface.],
+  label: <dash-ui>,
+)
+
+
+@dash-ui shows the dashboard's display of the real-time sensor data. The layout consists of a large numerical readout for the current distance and a dynamic line chart that visualizes the stability and history of the measurements over the last 10 seconds. The application uses shadcn for the components, and automatically detects the client device's system preference to render in either light or dark mode.
+
+=== Interface Validation Table
 
 #figure(table(
   columns: 3,
@@ -431,9 +585,28 @@ The Sensor Block operates using time-of-flight (ToF) measurement, which uses emi
     [*Why is this interface this value?*],
     [*Why do you know that your #underline[system] design details meet or exceed each property (reference block details as needed)?*]
   ),
+
+  table.header(level: 2, table.cell(colspan: 3)[*mcu_dashboard_rf: I/O*]),
+  [RF Protocol: Wi-Fi 802.11 b/g/n/ax],
+  [This is is a commonly supported protocol by clients as it uses the 2.4GHz band and supports backwards compatibility with Wi-Fi 5 and earlier.],
+  [The ESP32 natively supports 802.11 b/h/n/ax (Wi-Fi 6 with backwards compatibility), activated by the esp32 `WiFi` library @esp32_c6_sm.],
+  
+  [Data Protocol: HTTP + WS],
+  [HTTP is the widely supported protocol to server webpages. WebSockets support real-time bi-directional data transfer, allowing low latency distance updates.], 
+  [The `ESP32AsyncWebServer` library uses http and supports websocket handlers @esp_async_ws_wiki.],
+
+  [Port: 80],
+  [This is the default HTTP port, which allows clients to omit the port when connecting.],
+  [The code initializes the `AsyncWebServer` on port 80 #cite(<gh_repo>, supplement: [src/dashboard.cpp]).],
+
+  [Update Rate: 50Hz], [20ms polling allows low-latency measurements with smooth visual updates.], [The distance sensor code uses 20ms polling, and a websocket frame is pushed immediately after polling #cite(<gh_repo>, supplement: [src/distance.cpp])],
+
+  
   table.header(level: 2, table.cell(colspan: 3)[*outside_dashboard_usrin : Input*]),
   [Units: mm, cm, m, ft, in],
   [These are common units the user may want the distance displayed in], [Our code allows for the distance to be displayed in these units],
+
+  
   table.header(level: 2, table.cell(colspan: 3)[*dashboard_outside_usrout : Output*]),
   [Units: mm, cm, m, ft, in],
   [These are common units the user may want the distance displayed in], [Our code allows for the distance to be displayed in these units],
@@ -445,20 +618,23 @@ The Sensor Block operates using time-of-flight (ToF) measurement, which uses emi
   [Minimum distance: 100mm],
   [The project instructions document specified an engineering requirement that the device must measure distances from 0.1m-1.2m @esp32_project_instructions],
   [Our device can accurately measure distances 100cm away],
-
-  table.header(level: 2, table.cell(colspan: 3)[*mcu_dashboard_rf: Input*]),
-  [],[],[],
 ))
 
-=== Artifacts
+=== Verification
 
-=== Description
+*Interface: outside_dashboard_usrin (Input)*
++ *Units Selection:* Open the web dashboard in a browser. Click the unit selection dropdown menu. Select different units (mm, cm, m, ft, in) and verify that the request is sent to the MCU (observable via serial debug logs or immediate change in displayed values).
 
-=== Theory of Operation
+*Interface: dashboard_outside_usrout (Output)*
++ *Units Display:* Verify that the "Current Unit" label on the web dashboard updates immediately to reflect the unit selected by the user.
++ *Max/Min Distance Display:* With the sensor measuring an object at 100mm and then 1200mm, verify that the large distance number on the dashboard updates to reflect these values correctly (e.g., reads "0.1 m" and "1.2 m" if meters are selected).
+
+*Interface: mcu_dashboard_rf (Input)*
++ *Verification:* Verify that the dashboard loads on a client device (phone/laptop) connected to the ESP32's Wi-Fi network, confirming the RF link and HTTP server are functional.
 
 = System Level Interface Validation Table <system-level-interface-validation-table>
 
-#TODO[Be sure to include only system-level interfaces. System-level interface values and properties must match their corresponding block-level interfaces.]
+// Be sure to include only system-level interfaces. System-level interface values and properties must match their corresponding block-level interfaces.
 
 #figure(table(
   columns: 3,
@@ -517,11 +693,11 @@ The Sensor Block operates using time-of-flight (ToF) measurement, which uses emi
   [These are common units the user may want the distance displayed in], [Our code allows for the distance to be displayed in these units],
   
   [Maximum distance: 1200mm],
-  [The project instructions document specified an engineering requirement that the device must measure distances from 0.1m-1.2m @esp32_project_instructions],
+  [This satisfies the engineering requirement that the device must measure distances from 0.1m-1.2m @esp32_project_instructions],
   [Our device can accurately measure distances 1.2m away],
   
   [Minimum distance: 100mm],
-  [The project instructions document specified an engineering requirement that the device must measure distances from 0.1m-1.2m @esp32_project_instructions],
+  [This satisfies the engineering requirement that the device must measure distances from 0.1m-1.2m @esp32_project_instructions],
   [Our device can accurately measure distances 100cm away],
 ))
 
@@ -535,7 +711,7 @@ The Sensor Block operates using time-of-flight (ToF) measurement, which uses emi
 
 = Verification Process <verification-process>
 
-#TODO[Enumerate a verification process here that any junior in the class could follow. Be as specific and expository as possible. Use prior lab documentation to guide your verification process. Imagine this process was handed to another team to complete who did not design your system. Write instructions they could follow]
+// Enumerate a verification process here that any junior in the class could follow. Be as specific and expository as possible. Use prior lab documentation to guide your verification process. Imagine this process was handed to another team to complete who did not design your system. Write instructions they could follow
 
 == ER 1 Verification
 
@@ -619,7 +795,7 @@ $ "%Error" = abs(("Measued Value" - "Actual Distance")/"Actual Distance") times 
   ([Mid Range 1], 0.5, 0),
   ([Mid Range 2], 0.8, 0),
   ([Max Range], 1.2, 0),
-)), caption: [#TODO[CAPTION ME]])
+)), caption: [Distance accuracy verification table.])
 
 === Pass Condition
 
@@ -657,26 +833,30 @@ The numeric value is visible and updates in real-time to reflect the movement, a
 
 Either the numeric value is not displayed or updated, or the unit label is not visible.
 
-= Artifacts <artifacts>
+= System Artifacts <artifacts>
 
-#TODO[Populate this section with the miscellaneous but important findings that got you to your final system. This can be prior lab work, examples found online, reference schematics, pseudocode, previous or prior version block diagrams, etc.]
+== 3D Printed Case
 
-#subpar.grid(
-  figure(image("images/dashboard/dash_light.png"), caption: [Light dashboard]), <a>,
-  figure(image("images/dashboard/dash_dark.png"), caption: [Dark dashboard]), <b>,
-  columns: (1fr, 1fr),
-  caption: [A figure composed of two sub figures.],
-  label: <full>,
-)
+// Populate this section with the miscellaneous but important findings that got you to your final system. This can be prior lab work, examples found online, reference schematics, pseudocode, previous or prior version block diagrams, etc.
 
-#TODO[Oliver: Talk about filter algorithm]
+#figure(image("images/External Assembly.png", width: 95%), caption: [Exploded View of 3D printed case.]) <exp-case>
 
-#TODO[Elliot: Talk about calibration]
+#figure(image("images/skeleton.jpeg", width: 80%), caption: [Assembled sensor skeleton.]) <ass-skel>
 
-#TODO[3D print photos]
+@exp-case shows an exploded view of the 3D printed case we designed to hold our sensor. The structure consists of a:
+
+- *Internal Skeleton:* This is designed to hold all the components together into one block. It is constructed of 3 primary layers, with each layer have standoffs for circuit boards to attach. Each layer can be assembled independently, stacked, and wired together. Once the core of the skeleton is made, the distance sensor and display are attached perpendicularly on the front and side respectively. An assembled internal skeleton can be seen in @ass-skel.
+
+- *External Case:* This holds the skeleton, protecting the internal components and providing rigidity. It is designed so the internal skeleton can simply be slid in, and a faceplate is attached to seal it.
 
 // Include all relevant IEEE citations.
 
 // Cite everything you did not create yourself for this document. This includes but is not limited to diagrams, schematics, pseudocode/code, pinout visuals, etc.
+
+== Source Code
+
+Our full source code for this project is available at https://github.com/elliotnash/OSU-ECE-341-Project. The documentation on the github has more in-depth code documentation, plus testing tools for the dashboard and the source code for this document.
+
+#colbreak()
 
 #bibliography("references.yaml", title: [References]) <references>

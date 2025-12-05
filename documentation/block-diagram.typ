@@ -2,108 +2,7 @@
 #import "@preview/circuiteria:0.2.0": *
 
 #let hw-color = red
-#let ws-color = green
-#let http-color = blue
-
-#let sensor-block = (x, y) => {
-  element.block(
-    id: "sensor",
-    w: 9, 
-    h: 4, 
-    x: x, 
-    y: y,
-    name: [Sensor],
-    ports: (
-      north: ((id: "update", clock: true),),
-      west: (
-        (id: "sda", name: [i#super[2]c_sda_comm]),
-        (id: "scl", name: [i#super[2]c_scl_comm]),
-      ),
-      east: ((id: "distance", name: [distance_signal]),)
-    ),
-    fill: util.colors.green
-  )
-  wire.stub("sensor-port-update", "north", name: [update], vertical: true)
-
-  draw.set-style(stroke: hw-color)
-  wire.stub("sensor-port-sda", "west")
-  wire.stub("sensor-port-scl", "west")
-  draw.set-style(stroke: black)
-}
-
-#let display-block = (x, y) => {
-  element.block(
-    id: "display",
-    w: 7,
-    h: 4,
-    x: x,
-    y: y,
-    name: [#h(1.5em) Display],
-    ports: (
-      north: ((id: "update", clock: true),),
-      west: (
-        (id: "distance", name: [update_distance]),
-        (id: "unit", name: [update_unit]),
-        (id: "alert", name: [update_alert]),
-      ),
-      east: (
-        (id: "sda", name: [i#super[2]c_sda]),
-        (id: "scl", name: [i#super[2]c_scl]),
-      )
-    ),
-    fill: aqua
-  )
-
-  wire.stub("display-port-update", "north", name: [update], vertical: true)
-
-  draw.set-style(stroke: red)
-  wire.stub("display-port-sda", "east")
-  wire.stub("display-port-scl", "east")
-  draw.set-style(stroke: black)
-}
-
-#let network-block = (x, y) => {
-  element.block(
-    id: "network",
-    w: 9,
-    h: 6,
-    x: x,
-    y: y,
-    name: [Network #h(1em)],
-    ports: (
-      west: (
-        (id: "upd_distance", name: [update_distance]),
-        (id: "upd_unit", name: [update_unit]),
-        (id: "upd_alert", name: [update_alert]),
-      ),
-      east: (
-        (id: "unit_signal", name: [unit_signal]),
-        (id: "alert_signal", name: [alert_signal]),
-        (id: "dashboard", name: [serve_dashboard]),
-        (id: "distances", name: [serve_distances]),
-        (id: "brd_distance", name: [broadcast_distance]),
-        (id: "brd_unit", name: [broadcast_unit]),
-        (id: "brd_alert", name: [broadcast_alert]),
-      )
-    ),
-    fill: util.colors.purple
-  )
-}
-
-#let software-group = (x, y) => {
-  sensor-block(x + 0, y + 0)
-  display-block(x + 11, y - 2.5)
-  network-block(x + 0, y - 7)
-
-  // Sensor to Network
-  wire.wire("sensor-dist-to-network", ("sensor-port-distance", "network-port-upd_distance"), style: "dodge", dodge-y: -0.5)
-  // Sensor to Display
-  wire.wire("sensor-dist-to-display-dist", ("sensor-dist-to-network.dodge-start", "display-port-distance"), style: "zigzag", zigzag-ratio: 0%)
-  wire.intersection("sensor-dist-to-display-dist.zag")
-  // Network to Display
-  wire.wire("network-unit-to-display-unit", ("network-port-unit_signal", "display-port-unit"), style: "zigzag")
-  wire.wire("network-alert-to-display-alert", ("network-port-alert_signal", "display-port-alert"), style: "zigzag", zigzag-ratio: 3/2)
-}
+#let rf-color = blue
 
 #let dashboard-block = (x, y) => {
   element.block(
@@ -112,44 +11,42 @@
     h: 6,
     x: x,
     y: y,
-    name: [Dashboard],
+    name: [Dashboard #v(8em) ],
     ports: (
       west: (
-        (id: "set_distances", name: [set_distances]),
-        (id: "upd_distance", name: [update_distance]),
-        (id: "upd_unit", name: [update_unit]),
-        (id: "upd_alert", name: [update_alert]),
-        (id: "usr-unit", name: [usr_unit]),
-        (id: "usr-alert", name: [usr_alert])
+        (id: "rf", name: [mcu_dashboard_rf]),
+        (id: "usrin", name: [outside_dashboard_usrin]),
       ),
       east: (
-        (id: "display_distance", name: [distance_usrout]),
-        (id: "display_distances", name: [distance_graph_usrout]),
-        (id: "display_unit", name: [unit_usrout]),
-        (id: "display_alert", name: [alert_usrout]),
-        (id: "alert-triggered-usrout", name: [alert_triggered_usrout]),
-        (id: "brd_unit", name: [broadcast_unit]),
-        (id: "brd_alert", name: [broadcast_alert]),
+        (id: "usrout", name: [dashboard_outside_usrout]),
       )
     ),
-    fill: util.colors.purple
+    fill: util.colors.green
   )
 }
 
-#let boost-converter-block = (x, y) => {
+#let dashboard-diagram = circuit({
+  dashboard-block(0,0)
+  wire.wire("dashboard-to-outside", ("dashboard-port-usrout", (rel: (1,0), to: "dashboard-port-usrout")), directed: true)
+  wire.wire("outside-to-dashboard", ((rel: (-1,0), to: "dashboard-port-usrin"), "dashboard-port-usrin"), directed: true)
+  wire.wire("mcu-to-dashboard", ((rel: (-1,0), to: "dashboard-port-rf"), "dashboard-port-rf"), directed: true)
+  draw.mark((rel: (-1.1,0), to: "dashboard-port-rf"), (rel: (-2,0), to: "dashboard-port-rf"), symbol: ">", fill: black)
+})
+
+#let power-block = (x, y) => {
   element.block(
-    id: "boost-converter",
-    w: 7,
+    id: "power",
+    w: 10,
     h: 4,
     x: x,
     y: y,
-    name: [Boost Converter \ \ \ ],
+    name: [Power #v(4em)],
     ports: (
       west: (
-        (id: "dc-in", name: [bat_dcpwr]),
+        (id: "dc-in", name: [outside_power_dcpwr]),
       ),
       east: (
-        (id: "dc-out", name: [9v_dcpwr]),
+        (id: "dc-out", name: [power_mcu_dcpwr]),
       )
     ),
     ports-margins: (
@@ -160,202 +57,218 @@
   )
 }
 
-#let external-regulator-block = (x, y) => {
-  element.block(
-    id: "external-regulator",
-    w: 7,
-    h: 4,
-    x: x,
-    y: y,
-    name: [External Regulator \ \ \ ],
-    ports: (
-      west: (
-        (id: "dc-in", name: [9v_dcpwr]),
-      ),
-      east: (
-        (id: "dc-out", name: [5v_dcpwr]),
-      )
-    ),
-    ports-margins: (
-      west: (25%, 0%),
-      east: (25%, 0%),
-    ),
-    fill: util.colors.purple
-  )
-}
+#let power-diagram = circuit({
+  power-block(0,0)
+  wire.wire("outside-to-power", ((rel: (-1,0), to: "power-port-dc-in"), "power-port-dc-in"), directed: true)
+  wire.wire("power-to-mcu", ("power-port-dc-out", (rel: (1,0), to: "power-port-dc-out")), directed: true)
+})
 
-#let internal-regulator-block = (x, y) => {
+#let distance-block = (x, y) => {
   element.block(
-    id: "internal-regulator",
-    w: 7,
-    h: 4,
-    x: x,
-    y: y,
-    name: [ESP32 Internal Regulator \ \ \ ],
-    ports: (
-      west: (
-        (id: "dc-in", name: [5v_dcpwr]),
-      ),
-      east: (
-        (id: "dc-out", name: [3v3_dcpwr]),
-      )
-    ),
-    ports-margins: (
-      west: (25%, 0%),
-      east: (25%, 0%),
-    ),
-    fill: util.colors.purple
-  )
-}
-
-#let charger-block = (x, y) => {
-  element.block(
-    id: "charger",
-    w: 7,
-    h: 4,
-    x: x,
-    y: y,
-    name: [Li-Po Charger \ \ \ \ ],
-    ports: (
-      west: (
-        (id: "bat-in", name: [bat_dcpwr]),
-        (id: "usb-in", name: [usb_dcpwr]),
-      ),
-      east: (
-        (id: "bat-out", name: [bat_charge_dcpwr]),
-      )
-    ),
-    ports-margins: (
-      west: (25%, 0%),
-      east: (25%, 0%),
-    ),
-    fill: util.colors.purple
-  )
-}
-
-#let battery-block = (x, y) => {
-  element.block(
-    id: "battery",
-    w: 7,
-    h: 4,
-    x: x,
-    y: y,
-    name: [Li-Po \ \ \ \ ],
-    ports: (
-      west: (
-        (id: "bat-in", name: [bat_charge_dcpwr]),
-      ),
-      east: (
-        (id: "bat-out", name: [bat_dcpwr]),
-      )
-    ),
-    ports-margins: (
-      west: (25%, 0%),
-      east: (25%, 0%),
-    ),
-    fill: util.colors.purple
-  )
-}
-
-#let hw-sensor-block = (x, y) => {
-  element.block(
-    id: "hw-sensor",
+    id: "distance",
     w: 9,
-    h: 4,
+    h: 5,
     x: x,
     y: y,
-    name: [Sensor Board ],
+    name: [Distance Sensor #v(6em)],
     ports: (
       west: (
-        (id: "dc-in", name: [3v3_dcpwr]),
-        (id: "distance-in", name: [distance_envin]),
+        (id: "dc-in", name: [mcu_distance_dcpwr]),
+        (id: "comm", name: [mcu_distance_comm]),
+        (id: "envin", name: [outside_distance_envin]),
       ),
-      east: (
-        (id: "sda", name: [i#super[2]c_sda_comm]),
-        (id: "scl", name: [i#super[2]c_scl_comm]),
-      )
+    ),
+    ports-margins: (
+      west: (20%, 0%),
     ),
     fill: util.colors.orange
   )
 }
 
-#let hw-display-block = (x, y) => {
+#let distance-diagram = circuit({
+  distance-block(0,0)
+  wire.wire("mcu-to-distance-dcpwr", ((rel: (-1,0), to: "distance-port-dc-in"), "distance-port-dc-in"), directed: true)
+  wire.wire("mcu-to-distance-comm", ((rel: (-1,0), to: "distance-port-comm"), "distance-port-comm"), directed: true)
+  draw.mark((rel: (-1.1,0), to: "distance-port-comm"), (rel: (-2,0), to: "distance-port-comm"), symbol: ">", fill: black)
+  wire.wire("outside-to-distance-envin", ((rel: (-1,0), to: "distance-port-envin"), "distance-port-envin"), directed: true)
+})
+
+#let display-block = (x, y) => {
   element.block(
-    id: "hw-display",
+    id: "display",
     w: 10,
-    h: 4,
+    h: 5,
     x: x,
     y: y,
-    name: [Display Board],
+    name: [Display #v(6em)],
     ports: (
       west: (
-        (id: "dc-in", name: [3v3_dcpwr]),
-        (id: "sda", name: [i#super[2]c_sda_comm]),
-        (id: "scl", name: [i#super[2]c_scl_comm]),
+        (id: "dc-in", name: [mcu_display_dcpwr]),
+        (id: "comm", name: [mcu_display_comm]),
       ),
       east: (
-        (id: "display", name: [display_usrout]),
+        (id: "usrout", name: [display_outside_usrout]),
       )
     ),
     ports-margins: (
-      east: (33.333%, 0%),
+      west: (20%, 0%),
+      east: (46.666%, 0%),
     ),
     fill: util.colors.pink
   )
 }
 
-#let hardware-group = (x, y) => {
-  element.group(id: "psu", name: [Power Supply], stroke: (dash: "dotted"), {
-    boost-converter-block(x,y)
-    external-regulator-block(x + 8,y)
-    internal-regulator-block(x + 16,y)
-    
-    charger-block(x + 4,y - 5)
-    battery-block(x + 12,y - 5)
+#let display-diagram = circuit({
+  display-block(0,0)
+  wire.wire("mcu-to-display-dcpwr", ((rel: (-1,0), to: "display-port-dc-in"), "display-port-dc-in"), directed: true)
+  wire.wire("mcu-to-display-comm", ((rel: (-1,0), to: "display-port-comm"), "display-port-comm"), directed: true)
+  draw.mark((rel: (-1.1,0), to: "display-port-comm"), (rel: (-2,0), to: "display-port-comm"), symbol: ">", fill: black)
+  wire.wire("display-to-outside", ("display-port-usrout", (rel: (1,0), to: "display-port-usrout")), directed: true)
+})
 
-    // Battery connections
-    wire.wire("charger-to-lipo", ("charger-port-bat-out", "battery-port-bat-in"))
-    wire.wire("lipo-to-charger", ("battery-port-bat-out", "charger-port-bat-in"), style: "dodge", dodge-y: y - 0.5, dodge-margins: (0.5, 0.5))
-    wire.wire("lipo-to-boost-converter", ("lipo-to-charger.dodge-end", "boost-converter-port-dc-in"), style: "dodge", dodge-y: y - 0.5, dodge-margins: (0.5, 0.5))
-    wire.intersection("lipo-to-charger.dodge-end")
-
-    // Regulation connections
-    wire.wire("boost-converter-to-external-regulator", ("boost-converter-port-dc-out", "external-regulator-port-dc-in"))
-    wire.wire("external-regulator-to-internal-regulator", ("external-regulator-port-dc-out", "internal-regulator-port-dc-in"))
-  })
-
-  hw-sensor-block(x + 1, y - 10.5)
-  hw-display-block(x + 12, y - 10.5)
+#let mcu-block = (x, y) => {
+  element.block(
+    id: "mcu",
+    w: 10,
+    h: 6,
+    x: x,
+    y: y,
+    name: [MCU #v(8em)],
+    ports: (
+      west: (
+        (id: "dc-in", name: [power_mcu_dcpwr]),
+        (id: "rf", name: [mcu_dashboard_rf]),
+      ),
+      east: (
+        (id: "disp-dcpwr", name: [mcu_display_dcpwr]),
+        (id: "disp-comm", name: [mcu_display_comm]),
+        (id: "dist-dcpwr", name: [mcu_distance_dcpwr]),
+        (id: "dist-comm", name: [mcu_distance_comm]),
+      )
+    ),
+    ports-margins: (
+      west: (15%, 0%),
+      east: (15%, 0%),
+    ),
+    fill: util.colors.blue
+  )
 }
 
-#let block-diagram = circuit({
-  element.group(id: "mcu", name: [Microcontroller Program], stroke: (dash: "dashed"), {
-    software-group(0, 0)
+#let mcu-diagram = circuit({
+  mcu-block(0,0)
+  wire.wire("power-to-mcu", ((rel: (-1,0), to: "mcu-port-dc-in"), "mcu-port-dc-in"), directed: true)
+  wire.wire("mcu-to-rf", ((rel: (-1,0), to: "mcu-port-rf"), "mcu-port-rf"), directed: true)
+  draw.mark((rel: (-1.1,0), to: "mcu-port-rf"), (rel: (-2,0), to: "mcu-port-rf"), symbol: ">", fill: black)
+  wire.wire("mcu-to-display-dcpwr", ("mcu-port-disp-dcpwr", (rel: (1,0), to: "mcu-port-disp-dcpwr")), directed: true)
+  wire.wire("mcu-to-display-comm", ((rel: (1,0), to: "mcu-port-disp-comm"), "mcu-port-disp-comm"), directed: true)
+  draw.mark((rel: (1.1,0), to: "mcu-port-disp-comm"), (rel: (2,0), to: "mcu-port-disp-comm"), symbol: ">", fill: black)
+  wire.wire("mcu-to-distance-dcpwr", ("mcu-port-dist-dcpwr", (rel: (1,0), to: "mcu-port-dist-dcpwr")), directed: true)
+  wire.wire("mcu-to-distance-comm", ((rel: (1,0), to: "mcu-port-dist-comm"), "mcu-port-dist-comm"), directed: true)
+  draw.mark((rel: (1.1,0), to: "mcu-port-dist-comm"), (rel: (2,0), to: "mcu-port-dist-comm"), symbol: ">", fill: black)
+})
+
+#let hardware-group = (x, y) => {
+  power-block(x,y+10)
+  distance-block(x + 14,y)
+  display-block(x + 14,y + 10)
+  mcu-block(x,y+2)
+
+  // Power to MCU connection
+  wire.wire("power-to-mcu", ("power-port-dc-out", "mcu-port-dc-in"), style: "dodge", dodge-y: y + 9, directed: true)
+
+  // MCU to Display connections
+  wire.wire("mcu-to-display-dcpwr", ("mcu-port-disp-dcpwr", "display-port-dc-in"), style: "zigzag", zigzag-ratio: 25%, directed: true)
+  wire.wire("mcu-to-display", ("mcu-port-disp-comm", "display-port-comm"), style: "zigzag", zigzag-ratio: 40%, directed: true)
+    draw.mark("mcu-port-disp-comm", (rel: (-1,0)), symbol: ">", fill: black)
+
+
+  // MCU to Distance connections
+  wire.wire("mcu-to-distance-dcpwr", ("mcu-port-dist-dcpwr", "distance-port-dc-in"), style: "zigzag", zigzag-ratio: 55%, directed: true)
+  wire.wire("mcu-to-distance", ("mcu-port-dist-comm", "distance-port-comm"), style: "zigzag", zigzag-ratio: 40%, directed: true)
+  draw.mark("mcu-port-dist-comm", (rel: (-1,0)), symbol: ">", fill: black)
+}
+
+#let system-diagram = circuit({
+  element.group(id: "system", name: [System], stroke: (dash: "dashed"), {
+    element.group(id: "client", name: [Web Client], stroke: (dash: "dashed", paint: rf-color), padding: (left: 0.75), {
+      dashboard-block(7,-9)
+    })
+
+    element.group(id: "hardware", name: [Hardware], stroke: (dash: "dashed", paint: hw-color), {
+      hardware-group(0,0)
+    })
+
+    // MCU to Dashboard connection
+    wire.wire("mcu-to-dashboard", ("mcu-port-rf", "dashboard-port-rf"), style: "dodge", dodge-sides: ("west", "west"), dodge-margins: (0.5, 0.5), dodge-y: 1.5, directed: true)
+    draw.mark("mcu-port-rf", (rel: (1,0)), symbol: ">", fill: black)
   })
 
-  element.group(id: "client", name: [Web Client], stroke: (dash: "dashed", paint: http-color), {
-    dashboard-block(21.5,-7)
-  })
+  // Dashboard Outside stubs
+  wire.wire("dashboard-to-outside", ("dashboard-port-usrout", (rel: (10,0), to: "dashboard-port-usrout")), directed: true)
+  wire.wire("outside-to-dashboard", ((rel: (-10,0), to: "dashboard-port-usrin"), "dashboard-port-usrin"), directed: true)
 
-  element.group(id: "hardware", name: [Hardware], stroke: (dash: "dashed", paint: http-color), {
-    hardware-group(0,20)
-  })
+  // Power Outside stubs
+  wire.wire("outside-to-power", ((rel: (-3,0), to: "power-port-dc-in"), "power-port-dc-in"), directed: true)
 
-  // Network to dashboard serve
-  wire.wire("network-dashboard-serve1", ("network-port-dashboard", (rel: (10.95,0))), color: http-color)
-  wire.wire("network-dashboard-serve2", ((to: "network-port-dashboard", rel: (10.95,0)), (to: "network-port-dashboard", rel: (10.95,3.25))), color: http-color)
-  wire.wire("network-dashboard-serve3", ((to: "network-port-dashboard", rel: (10.95,3.25)), "client.north"), color: http-color, style: "zigzag", zigzag-ratio: 100%, directed: true)
-  
-  // Network to Dashboard
-  wire.wire("network-distances-to-dashboard-distances", ("network-port-distances", "dashboard-port-set_distances"), style: "zigzag", zigzag-ratio: 90%, color: http-color)
-  wire.wire("network-brd-distance-to-dashboard-upd-distance", ("network-port-brd_distance", "dashboard-port-upd_distance"), style: "zigzag", zigzag-ratio: 92%, color: ws-color)
-  wire.wire("network-brd-unit-to-dashboard-upd-unit", ("network-port-brd_unit", "dashboard-port-upd_unit"), style: "zigzag", zigzag-ratio: 94%, color: ws-color)
-  wire.wire("network-brd-alert-to-dashboard-upd-alert", ("network-port-brd_alert", "dashboard-port-upd_alert"), style: "zigzag", zigzag-ratio: 96%, color: ws-color)
-    
-  wire.wire("dashboard-unit-to-network-unit", ("dashboard-port-brd_unit", "network-port-upd_unit"), style: "dodge", dodge-y: -8.75, dodge-margins: (1.75, 1.75), color: ws-color)
-  wire.wire("dashboard-alert-to-network-alert", ("dashboard-port-brd_alert", "network-port-upd_alert"), style: "dodge", dodge-y: -8.25, dodge-margins: (1.25, 1.25), color: ws-color)
+  // Distance Outside stubs
+  wire.wire("outside-to-distance", ((rel: (-17,0), to: "distance-port-envin"), "distance-port-envin"), directed: true)
+
+  // Display Outside stubs
+  wire.wire("display-to-outside", ("display-port-usrout", (rel: (3,0), to: "display-port-usrout")), directed: true)
 })
 
 
 #set page(height: auto, width: auto, margin: 1cm)
-#block-diagram
+
+#let system-black-box-diagram = circuit({
+  element.block(
+    id: "distance",
+    w: 12,
+    h: 6,
+    x: 0,
+    y: 0,
+    name: [Distance Sensor System #v(7em)],
+    ports: (
+      west: (
+        (id: "dc-in", name: [outside_power_dcpwr]),
+        (id: "envin", name: [outside_distance_envin]),
+        (id: "usrin", name: [outside_dashboard_usrin]),
+      ),
+      east: (
+        (id: "disp-usrout", name: [display_outside_usrout]),
+        (id: "dash-usrout", name: [dashboard_outside_usrout]),
+      )
+    ),
+    ports-margins: (
+      west: (20%, 0%),
+      east: (20%, 0%),
+    ),
+    fill: gray.lighten(65%)
+  )
+  wire.wire("outside-to-power", ((rel: (-1,0), to: "distance-port-dc-in"), "distance-port-dc-in"), directed: true)
+  wire.wire("outside-to-distance", ((rel: (-1,0), to: "distance-port-envin"), "distance-port-envin"), directed: true)
+  wire.wire("outside-to-dashboard", ((rel: (-1,0), to: "distance-port-usrin"), "distance-port-usrin"), directed: true)
+  wire.wire("distance-to-display", ("distance-port-disp-usrout", (rel: (1,0), to: "distance-port-disp-usrout")), directed: true)
+  wire.wire("distance-to-dashboard", ("distance-port-dash-usrout", (rel: (1,0), to: "distance-port-dash-usrout")), directed: true)
+
+})
+
+#system-black-box-diagram
+#colbreak()
+
+#system-diagram
+#colbreak()
+
+#dashboard-diagram
+#colbreak()
+
+#power-diagram
+#colbreak()
+
+#distance-diagram
+#colbreak()
+
+#display-diagram
+#colbreak()
+
+#mcu-diagram
